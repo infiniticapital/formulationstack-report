@@ -1,0 +1,2151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>FormulationStack — Deep Dive Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,sans-serif;background:#f8fafc;color:#0f172a;line-height:1.5}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+
+/* ── Layout ── */
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
+@media(max-width:700px){.grid2,.grid3,.grid4{grid-template-columns:1fr}.hide-sm{display:none!important}}
+
+/* ── Nav ── */
+.nav{position:sticky;top:0;z-index:100;background:rgba(248,250,252,.94);backdrop-filter:blur(12px);border-bottom:1px solid #e2e8f0}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-icon{width:34px;height:34px;border-radius:10px;background:#2563eb;display:flex;align-items:center;justify-content:center}
+.nav-title{font-size:14px;font-weight:900;color:#0f172a}
+.nav-sub{font-size:11px;color:#94a3b8}
+.nav-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b}
+.pulse{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Page Header ── */
+.page-header{padding:36px 0 28px}
+.eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;margin-bottom:8px}
+.page-title{font-size:34px;font-weight:900;color:#0f172a;margin-bottom:6px}
+.page-sub{font-size:15px;color:#64748b}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;gap:6px;background:#fff;border:1px solid #f1f5f9;border-radius:16px;padding:6px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:32px}
+.tab-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;border-radius:12px;font-size:13px;font-weight:600;color:#64748b;transition:all .2s}
+.tab-btn.active{background:#2563eb;color:#fff;box-shadow:0 2px 12px rgba(37,99,235,.3)}
+.tab-btn:hover:not(.active){background:#f8fafc;color:#374151}
+.tab-btn svg{flex-shrink:0}
+
+/* ── Tab Content ── */
+.tab-panel{display:none}.tab-panel.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Cards ── */
+.card{background:#fff;border:1px solid #f1f5f9;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .2s,transform .2s}
+.card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08);transform:translateY(-1px)}
+.card-p{padding:24px}
+
+/* ── Hero Banner ── */
+.hero{border-radius:20px;padding:36px;color:#fff;position:relative;overflow:hidden;margin-bottom:28px}
+.hero::before{content:'';position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.06)}
+.hero-inner{position:relative;z-index:1}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.75;margin-bottom:12px}
+.hero h2{font-size:22px;font-weight:900;margin-bottom:8px}
+.hero p{font-size:13px;line-height:1.65;opacity:.82}
+.hero strong{color:#fff;opacity:1}
+
+/* ── Risk Badge ── */
+.rbadge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid}
+.rbadge-red{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.rbadge-yellow{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.rbadge-green{background:#dcfce7;color:#166534;border-color:#86efac}
+
+/* ── Timeline ── */
+.timeline{position:relative}
+.tl-line{position:absolute;left:22px;top:0;bottom:0;width:2px;background:#e2e8f0}
+.tl-row{position:relative;padding-left:60px;margin-bottom:16px}
+.tl-icon{position:absolute;left:0;top:0;width:46px;height:46px;background:#fff;border:2px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;justify-content:center;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.tl-card{background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:18px;transition:box-shadow .2s}
+.tl-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.step-num{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-right:8px}
+.step-label{font-weight:800;font-size:15px;color:#0f172a;margin-top:2px}
+.step-sub{font-size:11px;color:#64748b;margin-top:2px}
+.step-detail{font-size:13px;color:#475569;line-height:1.65;margin-top:10px}
+.step-action{display:flex;align-items:flex-start;gap:8px;background:#eff6ff;border-radius:10px;padding:10px 12px;margin-top:12px}
+.step-action span{font-size:12px;font-weight:600;color:#1e40af;line-height:1.55}
+
+/* ── Table ── */
+.tbl-wrap{overflow-x:auto;border-radius:16px;border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:#f8fafc}
+th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;white-space:nowrap}
+td{padding:10px 14px;border-top:1px solid #f8fafc}
+tbody tr:nth-child(even){background:#fafafa}
+tbody tr:hover{background:#f5f8ff}
+tfoot td{background:#0f172a;color:#fff;font-weight:700;padding:14px}
+
+/* ── Progress Bar ── */
+.bar-track{background:#f1f5f9;border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+
+/* ── KPI Card ── */
+.kpi-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.kpi-value{font-size:26px;font-weight:900;color:#0f172a;margin-bottom:2px}
+.kpi-sub{font-size:11px;color:#94a3b8;margin-bottom:4px}
+.kpi-label{font-size:12px;font-weight:600;color:#475569}
+
+/* ── Alerts ── */
+.alert-warn{display:flex;gap:14px;background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:18px}
+.alert-warn p{font-size:13px;color:#b45309;line-height:1.65}
+.alert-warn strong{color:#92400e}
+
+/* ── Section Title ── */
+.stitle{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#0f172a;margin-bottom:16px}
+
+/* ── Stars ── */
+.stars{display:flex;gap:2px;color:#f59e0b}
+.star-empty{color:#e2e8f0}
+
+/* ── Accordion ── */
+.phase-card{background:#fff;border:1px solid #f1f5f9;border-radius:18px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:border-color .2s}
+.phase-hdr{display:flex;align-items:center;gap:16px;padding:18px 20px;width:100%;text-align:left;transition:background .2s}
+.phase-hdr:hover{background:#fafafa}
+.ph-icon{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ph-meta{flex:1;min-width:0}
+.ph-badge{display:inline-flex;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;margin-bottom:4px}
+.ph-title{font-size:15px;font-weight:800;color:#0f172a}
+.ph-goal{font-size:12px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ph-kpi{font-size:11px;font-weight:700;padding:6px 12px;border-radius:10px;white-space:nowrap;flex-shrink:0}
+.ph-chevron{transition:transform .3s;flex-shrink:0}
+.ph-chevron.open{transform:rotate(180deg)}
+.phase-body{display:none;border-top:1px solid;padding:18px}
+.phase-body.open{display:block;animation:fadeIn .25s ease}
+.tactic{background:#fff;border:1px solid;border-radius:12px;padding:14px}
+.tactic-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.tactic-num span{color:#fff;font-size:10px;font-weight:700}
+.tactic h4{font-size:13px;font-weight:700;color:#0f172a;line-height:1.4}
+.tactic p{font-size:12px;color:#64748b;line-height:1.65;margin-top:6px;padding-left:28px}
+
+/* ── Callout Grid ── */
+.callout{background:#fff;border:1px solid #f1f5f9;border-radius:16px;padding:18px;text-align:center}
+.callout-val{font-size:22px;font-weight:900;margin-bottom:4px}
+.callout-lbl{font-size:12px;font-weight:700;color:#0f172a;margin-bottom:2px}
+.callout-sub{font-size:11px;color:#94a3b8}
+
+/* ── Channel rows ── */
+.ch-row{margin-bottom:16px}
+.ch-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.ch-label{font-size:13px;font-weight:600;color:#0f172a}
+.ch-note{font-size:11px;color:#94a3b8;margin-left:6px}
+.ch-pct{font-size:14px;font-weight:900}
+
+/* ── Pillars ── */
+.pillar-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.pillar-title{font-size:13px;font-weight:800;margin-bottom:6px}
+.pillar-desc{font-size:12px;color:#64748b;line-height:1.65}
+
+/* ── Footer ── */
+.footer{border-top:1px solid #e2e8f0;padding:24px 0;display:flex;align-items:center;justify-content:space-between;margin-top:48px;gap:16px;flex-wrap:wrap}
+.footer span{font-size:11px;color:#94a3b8}
+
+/* ── Inner Tabs (inside dual panel) ── */
+.inner-tab-bar{display:flex;gap:4px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:14px;padding:5px;margin-bottom:24px}
+.inner-tab-btn{flex:1;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;color:#64748b;transition:all .2s;text-align:center}
+.inner-tab-btn.active{background:#fff;color:#0f172a;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.inner-tab-btn:hover:not(.active){color:#374151}
+.inner-panel{display:none}.inner-panel.active{display:block;animation:fadeIn .25s ease}
+.sub-tab-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.sub-tab-btn{padding:7px 16px;border-radius:99px;font-size:12px;font-weight:700;color:#64748b;border:1.5px solid #e2e8f0;background:#fff;transition:all .2s}
+.sub-tab-btn.active{background:#0f172a;color:#fff;border-color:#0f172a}
+.sub-tab-btn:hover:not(.active){background:#f8fafc;border-color:#cbd5e1;color:#374151}
+.sub-panel{display:none}.sub-panel.active{display:block;animation:fadeIn .2s ease}
+/* ── Score Badge ── */
+.score-ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900}
+.synergy-layer{border-radius:14px;padding:16px;margin-bottom:12px}
+.synergy-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+.optim-row{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #f1f5f9}
+.optim-row:last-child{border-bottom:none}
+.optim-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:6px}
+.risk-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.moat-card{border-radius:14px;padding:18px;border:1px solid}
+.moat-num{font-size:26px;font-weight:900;margin-bottom:2px}
+.reg-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.reg-row:last-child{border-bottom:none}
+.reg-flag{font-size:16px;flex-shrink:0;line-height:1.6}
+/* ── Spacers ── */
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt20{margin-top:20px}.mt24{margin-top:24px}.mt28{margin-top:28px}
+.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb20{margin-bottom:20px}
+.pt16{padding-top:16px}.pt20{padding-top:20px}
+.gap4{gap:4px}.gap8{gap:8px}.gap12{gap:12px}.gap16{gap:16px}
+.flex{display:flex}.items-center{align-items:center}.items-start{align-items:flex-start}
+.justify-between{justify-content:space-between}.flex-1{flex:1}.flex-wrap{flex-wrap:wrap}
+.min-w-0{min-width:0}
+.bold{font-weight:700}.black{font-weight:900}
+.c-slate{color:#475569}.c-muted{color:#64748b}.c-dim{color:#94a3b8}
+.c-green{color:#16a34a}.c-red{color:#dc2626}.c-blue{color:#2563eb}
+.text-xs{font-size:11px}.text-sm{font-size:13px}.text-lg{font-size:17px}
+.uppercase{text-transform:uppercase}.tracking{letter-spacing:.5px}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.border-t{border-top:1px solid #f1f5f9}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6l2 9-2 9h8l-2-9z"/><path d="M6 2h12"/><path d="M4 20h16"/></svg>
+      </div>
+      <div><div class="nav-title">FormulationStack</div><div class="nav-sub">Deep Dive Report · v1.0</div></div>
+    </div>
+    <div class="nav-status"><div class="pulse"></div>Viabilidad: GO</div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="eyebrow">Panel Dual — Senior Formulation Scientist + Biotech Business Strategist</div>
+    <h1 class="page-title">Análisis Técnico Expandido</h1>
+    <p class="page-sub">SupplyChain de Cordyceps &nbsp;·&nbsp; Modelo Financiero Detallado &nbsp;·&nbsp; Estrategia de Lanzamiento DTC</p>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('dual',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+      <span>Panel Dual</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('supply',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+      <span>SupplyChain Cordyceps</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('financial',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      <span>Modelo Financiero</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('launch',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+      <span>Estrategia DTC 90D</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('competencia',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Competencia</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('marketing',this)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span>Plan de Marketing</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('riesgos',this)" style="border:1.5px solid #fca5a5">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span>Puntos Ciegos</span>
+    </button>
+  </div>
+
+  <!-- ══ TAB 0: PANEL DUAL ════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-dual">
+
+    <!-- Header -->
+    <div class="hero" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#312e81 100%)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+          FormulationStack — Dual Panel Review
+        </div>
+        <h2>Veredicto Consolidado: GO — con optimización primero</h2>
+        <p>Dos perspectivas independientes — <strong>Senior Formulation Scientist</strong> y <strong>Biotech Business Strategist</strong> — sobre el mismo stack. Stack científicamente sólido, comercialmente diferenciado y legalmente manufacturable hoy bajo DSHEA.</p>
+      </div>
+    </div>
+
+    <!-- ── Inner Role Tabs ── -->
+    <div class="inner-tab-bar">
+      <button class="inner-tab-btn active" onclick="switchInner('scientist',this)">🔬 Senior Formulation Scientist</button>
+      <button class="inner-tab-btn" onclick="switchInner('strategist',this)">📊 Biotech Business Strategist</button>
+    </div>
+
+    <!-- ══ SCIENTIST PANEL ══ -->
+    <div class="inner-panel active" id="inner-scientist">
+      <div class="flex items-center gap12 mb16">
+        <div class="score-ring" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8">9/10</div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#2563eb;margin-bottom:4px">Phase 1 — Science &amp; Longevity</div>
+          <div style="font-weight:900;font-size:15px;color:#0f172a">Stack coherente y bien fundamentado</div>
+          <div class="text-xs c-dim mt8">All 7 core ingredients tienen evidencia Nivel 1–2 (RCTs en humanos)</div>
+        </div>
+      </div>
+
+      <div class="sub-tab-bar">
+        <button class="sub-tab-btn active" onclick="switchSub('scientist','synergy',this)">Synergy Map</button>
+        <button class="sub-tab-btn" onclick="switchSub('scientist','optim',this)">Optimization</button>
+      </div>
+
+      <!-- SUB: Synergy Map -->
+      <div class="sub-panel active" id="sub-scientist-synergy">
+        <div class="card card-p mb16">
+          <div class="stitle" style="margin-bottom:14px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6l2 9-2 9h8l-2-9z"/><path d="M6 2h12"/><path d="M4 20h16"/></svg>
+            BioavailabilityProfile &amp; Synergy — Tres Capas Convergentes
+          </div>
+          <p class="text-sm c-muted mb16" style="line-height:1.65">El stack tiene una lógica mecanicista sólida. No hay antagonismo real entre ingredientes — tres capas que convergen, no compiten:</p>
+          <div class="synergy-layer" style="background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:10px">
+            <div class="flex items-start gap12">
+              <div class="synergy-num" style="background:#2563eb;margin-top:2px">1</div>
+              <div><div style="font-weight:800;font-size:14px;color:#1e40af;margin-bottom:4px">Capa Energética Mitocondrial</div>
+              <div class="text-xs c-dim mb8" style="font-weight:600">Cordyceps + Creatina</div>
+              <p class="text-sm c-slate" style="line-height:1.7">Cordyceps activa <strong>AMPK → PGC-1α → biogénesis mitocondrial</strong>. Creatina actúa como buffer PCr para firing neuronal de alta frecuencia. Sinergia <strong>1+1 &gt; 2</strong> en alta demanda cognitiva.</p></div>
+            </div>
+          </div>
+          <div class="synergy-layer" style="background:#faf5ff;border:1px solid #e9d5ff;margin-bottom:10px">
+            <div class="flex items-start gap12">
+              <div class="synergy-num" style="background:#7c3aed;margin-top:2px">2</div>
+              <div><div style="font-weight:800;font-size:14px;color:#6d28d9;margin-bottom:4px">Capa Catecolaminérgica</div>
+              <div class="text-xs c-dim mb8" style="font-weight:600">Tirosina → DOPA → Dopamina/Norepinefrina (B6 como cofactor rate-limiting)</div>
+              <p class="text-sm c-slate" style="line-height:1.7">Cafeína bloquea <strong>A1/A2A adenosina</strong> y amplifica el efecto catecolaminérgico. Sin Tirosina, la cafeína bajo estrés prolongado <strong>depleta dopamina</strong>. Sin B6-P5P la conversión rinde al 40–50% de su potencial.</p></div>
+            </div>
+          </div>
+          <div class="synergy-layer" style="background:#f0fdfa;border:1px solid #99f6e4">
+            <div class="flex items-start gap12">
+              <div class="synergy-num" style="background:#0d9488;margin-top:2px">3</div>
+              <div><div style="font-weight:800;font-size:14px;color:#0f766e;margin-bottom:4px">Capa Adaptogénica HPA</div>
+              <div class="text-xs c-dim mb8" style="font-weight:600">Rhodiola (eje DA/5-HT) + Ashwagandha (eje GABA-A/HPA) + L-Teanina</div>
+              <p class="text-sm c-slate" style="line-height:1.7">Rhodiola estimulante-adaptogénica. Ashwagandha calmante-adaptogénica. Se complementan sin solaparse. L-Teanina genera <strong>ondas alfa</strong> y amortigua la reactividad amigdalina de la cafeína.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card card-p">
+            <div class="stitle" style="font-size:14px;margin-bottom:12px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Longevity Impact
+            </div>
+            <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#22c55e"></div><div><div class="text-sm bold">Ashwagandha → protege telómeros</div><div class="text-xs c-dim">Reduce estrés oxidativo sistémico</div></div></div>
+            <div class="optim-row"><div class="optim-dot" style="background:#22c55e"></div><div><div class="text-sm bold">Cordyceps → densidad mitocondrial</div><div class="text-xs c-dim">Biogénesis vía AMPK/PGC-1α</div></div></div>
+            <div class="optim-row"><div class="optim-dot" style="background:#22c55e"></div><div><div class="text-sm bold">Rhodiola → activa HIF-1α</div><div class="text-xs c-dim">Adaptación hipóxica + antienvejecimiento celular</div></div></div>
+            <div class="alert-warn mt16" style="padding:10px 12px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <p style="font-size:12px"><strong>Riesgo principal:</strong> Cafeína continua → downregulation A1/A2A → tolerancia. Solución: <strong>PerformanceCycle™ 5-on/2-off</strong>.</p>
+            </div>
+          </div>
+          <div class="card card-p" style="background:#eff6ff;border-color:#bfdbfe">
+            <div class="stitle" style="font-size:14px;margin-bottom:12px;color:#1e40af">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Timing Note
+            </div>
+            <p class="text-sm c-slate" style="line-height:1.7">Único riesgo real de sinergia negativa: cafeína ↑ cortisol + Ashwagandha ↓ cortisol en la misma dosis producen <strong>cancelación parcial</strong>.</p>
+            <div style="background:#dbeafe;border-radius:10px;padding:12px;margin-top:12px">
+              <div class="text-xs bold c-blue mb8">Solución recomendada</div>
+              <div class="text-xs c-slate" style="line-height:1.6">Dosing matutino cuando el cortisol natural está alto (6–9am). Ambos compuestos trabajan en la misma dirección en ese momento. Sin cancelación.</div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /sub-scientist-synergy -->
+
+      <!-- SUB: Optimization -->
+      <div class="sub-panel" id="sub-scientist-optim">
+        <div class="card card-p mb16">
+          <div class="stitle" style="margin-bottom:14px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Optimizaciones de Fórmula — Panel Científico
+          </div>
+          <p class="text-sm c-muted mb16" style="line-height:1.65">El stack base funciona. Estas optimizaciones lo llevan de <em>competitivo</em> a <strong>best-in-class</strong>:</p>
+          <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#2563eb;margin-top:5px"></div><div><div class="text-sm bold">Cafeína → 150 mg fijo <span class="rbadge rbadge-green" style="margin-left:6px">APLICAR</span></div><div class="text-xs c-dim mt8">200 mg eleva cortisol innecesariamente. 150 mg maximiza estado de alerta sin sobre-activación del eje HPA.</div></div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#2563eb;margin-top:5px"></div><div><div class="text-sm bold">L-Teanina → 300 mg (ratio 1:2 Cafeína:Teanina) <span class="rbadge rbadge-green" style="margin-left:6px">APLICAR</span></div><div class="text-xs c-dim mt8">Ratio 1:1 estándar es insuficiente. 1:2 produce mejor modulación de ondas alfa sin pérdida de estado de alerta.</div></div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#7c3aed;margin-top:5px"></div><div><div class="text-sm bold">Ashwagandha → 600 mg KSM-66 full-dose <span class="rbadge rbadge-red" style="margin-left:6px">CRÍTICO</span></div><div class="text-xs c-dim mt8">300 mg es sub-terapéutico según todos los RCTs de KSM-66. El efecto ansiolítico y de cortisol aparece a 300 mg/BID o 600 mg/día — nunca por debajo.</div></div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#f59e0b;margin-top:5px"></div><div><div class="text-sm bold">Añadir Vitamina B6 como P-5-P — 25 mg <span class="rbadge rbadge-yellow" style="margin-left:6px">IMPORTANTE</span></div><div class="text-xs c-dim mt8">Cofactor rate-limiting para la conversión Tirosina→DOPA→Dopamina. Sin P-5-P la Tirosina rinde al 40–50% de su potencial. Costo mínimo, impacto máximo.</div></div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#16a34a;margin-top:5px"></div><div><div class="text-sm bold">BioPerine® 5 mg <span class="rbadge rbadge-green" style="margin-left:6px">RECOMENDADO</span></div><div class="text-xs c-dim mt8">+20–30% biodisponibilidad en Ashwagandha y Rhodiola. Ingrediente trademarked — licencia requerida con Sabinsa Corp.</div></div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#0d9488;margin-top:5px"></div><div><div class="text-sm bold">Añadir Phosphatidylserine (PS) — 100 mg <span class="rbadge rbadge-yellow" style="margin-left:6px">ELITE TIER</span></div><div class="text-xs c-dim mt8">Potencia el efecto de Ashwagandha en cortisol. Complementa la capa adaptogénica. Convierte el stack de "bueno" a "referencia de mercado".</div></div></div>
+        </div>
+        <div class="alert-warn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div><p><strong>Alerta de Formato:</strong> El volumen total del stack (~10–11g por serving) hace imposible el formato cápsula en una sola toma (requeriría ~10 cápsulas). Recomendación del panel: <strong>polvo en sachet para Creatina + cápsulas para el resto</strong>. Split-format strategy.</p></div>
+        </div>
+      </div><!-- /sub-scientist-optim -->
+    </div><!-- /inner-scientist -->
+
+    <!-- ══ STRATEGIST PANEL ══ -->
+    <div class="inner-panel" id="inner-strategist">
+      <div class="flex items-center gap12 mb16">
+        <div class="score-ring" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#6d28d9">8/10</div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#7c3aed;margin-bottom:4px">Phase 2 — Manufactura &amp; Go-to-Market</div>
+          <div style="font-weight:900;font-size:15px;color:#0f172a">Viabilidad alta, complejidad moderada de SupplyChain</div>
+          <div class="text-xs c-dim mt8">Mercado biohacker/ejecutivo CAGR ~14% (2024–2030)</div>
+        </div>
+      </div>
+
+      <div class="sub-tab-bar">
+        <button class="sub-tab-btn active" onclick="switchSub('strategist','verdict',this)">Verdict</button>
+        <button class="sub-tab-btn" onclick="switchSub('strategist','viability',this)">Viability Assessment</button>
+      </div>
+
+      <!-- SUB: Verdict -->
+      <div class="sub-panel active" id="sub-strategist-verdict">
+        <div class="card card-p mb16">
+          <div class="stitle" style="margin-bottom:14px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            SupplyChain &amp; Sourcing — Riesgos Principales
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Ingrediente</th><th>Riesgo</th><th>Nivel</th><th>Solución</th></tr></thead>
+              <tbody>
+                <tr><td><strong>KSM-66 Ashwagandha</strong></td><td class="text-sm c-slate">Fuente única (Ixoreal, India)</td><td><span class="rbadge rbadge-yellow">Medio</span></td><td class="text-sm c-slate">Licencia directa · $120–180/kg</td></tr>
+                <tr><td><strong>Cordyceps Militaris</strong></td><td class="text-sm c-slate">~40% del mercado adulterado</td><td><span class="rbadge rbadge-red">Alto</span></td><td class="text-sm c-slate">DNA barcoding + β-glucan &gt;25% CoA por batch</td></tr>
+                <tr><td><strong>Rhodiola Rosea</strong></td><td class="text-sm c-slate">Alta adulteración en fuentes baratas</td><td><span class="rbadge rbadge-red">Alto</span></td><td class="text-sm c-slate">HPLC 3% rosavins / 1% salidroside por batch</td></tr>
+                <tr><td><strong>BioPerine® / AstraGin®</strong></td><td class="text-sm c-slate">Ingredientes trademarked</td><td><span class="rbadge rbadge-green">Bajo</span></td><td class="text-sm c-slate">Licencia de uso · $2–4 / unidad</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card card-p">
+          <div class="stitle" style="margin-bottom:14px;font-size:14px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Regulatory Compliance
+          </div>
+          <div class="reg-row" style="padding-top:0"><div class="reg-flag">🇺🇸</div><div><div class="text-sm bold">DSHEA (US) — Sin aprobación pre-mercado</div><div class="text-xs c-muted mt8" style="line-height:1.6">Manufactura GMP <strong>21 CFR Part 111</strong> obligatoria. Todos los ingredientes tienen historial de mercado previo — sin Novel Ingredient notifications.</div></div></div>
+          <div class="reg-row"><div class="reg-flag">✅</div><div><div class="text-sm bold">Claims permitidos</div><div class="text-xs c-muted mt8">"Supports mental performance and stress resilience" ✅ — Estructura/función DSHEA-compliant.</div></div></div>
+          <div class="reg-row"><div class="reg-flag">❌</div><div><div class="text-sm bold">Claims prohibidos</div><div class="text-xs c-muted mt8">Cualquier referencia a tratar, curar o prevenir enfermedades = claim farmacológico ilegal bajo DSHEA.</div></div></div>
+          <div class="reg-row"><div class="reg-flag">🇪🇺</div><div><div class="text-sm bold">EU — Alerta de Expansión</div><div class="text-xs c-muted mt8" style="line-height:1.6">Cordyceps militaris puede requerir autorización <strong>Novel Food</strong>. Rhodiola tiene vía THMP más estricta. Framework significativamente más complejo que US.</div></div></div>
+        </div>
+      </div><!-- /sub-strategist-verdict -->
+
+      <!-- SUB: Viability Assessment -->
+      <div class="sub-panel" id="sub-strategist-viability">
+        <div class="card card-p mb16">
+          <div class="stitle" style="margin-bottom:14px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            MarketEdge — El Moat Competitivo
+          </div>
+          <p class="text-xs c-dim mb16" style="line-height:1.6">El mercado está saturado de <em>prop blends</em> que esconden dosis reales. Alpha Brain y Mind Lab Pro apuntan a todos. Tres pilares defensibles únicos:</p>
+          <div class="moat-card mb12" style="background:#eff6ff;border-color:#bfdbfe"><div class="moat-num" style="color:#2563eb">01</div><div class="text-sm bold" style="color:#1e40af;margin-bottom:4px">Transparencia Radical</div><div class="text-xs c-muted" style="line-height:1.6">Full label disclosure con dosis clínicas publicadas. QR code por batch con CoA de terceros. Solo esto elimina el 80% de la competencia directa.</div></div>
+          <div class="moat-card mb12" style="background:#faf5ff;border-color:#ddd6fe"><div class="moat-num" style="color:#7c3aed">02</div><div class="text-sm bold" style="color:#6d28d9;margin-bottom:4px">NSF Certified for Sport / Informed-Sport</div><div class="text-xs c-muted" style="line-height:1.6">$8,000–15,000/año. Ningún competidor a $75 MSRP tiene este sello actualmente. Abre el segmento atleta + ejecutivo corporativo.</div></div>
+          <div class="moat-card" style="background:#f0fdfa;border-color:#99f6e4"><div class="moat-num" style="color:#0d9488">03</div><div class="text-sm bold" style="color:#0f766e;margin-bottom:4px">PerformanceCycle™ Protocol</div><div class="text-xs c-muted" style="line-height:1.6">IP propietario 5-on/2-off. Convierte el riesgo de tolerancia a cafeína en una <strong>feature de marca</strong>. Posicionamiento longevity &gt; performance para mercado CAGR 14%.</div></div>
+        </div>
+        <div class="grid2">
+          <div class="callout" style="border:1px solid #f1f5f9"><div class="callout-val c-blue">$60–90</div><div class="callout-lbl">Precio de venta justificado</div><div class="callout-sub">avg. selling price / unidad</div></div>
+          <div class="callout" style="border:1px solid #f1f5f9"><div class="callout-val" style="color:#16a34a">65–70%</div><div class="callout-lbl">Gross margin alcanzable</div><div class="callout-sub">COGs $18–24/unidad (branded)</div></div>
+        </div>
+      </div><!-- /sub-strategist-viability -->
+    </div><!-- /inner-strategist -->
+
+    <!-- ── 4 Assessment Cards (siempre visibles) ── -->
+    <div class="grid2 mt28 mb20">
+      <div class="card card-p" style="border-top:3px solid #16a34a">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="rbadge rbadge-green" style="font-size:11px;padding:4px 12px">STRONG</span>
+          <span style="font-weight:800;font-size:14px;color:#0f172a">Scientific Validity</span>
+        </div>
+        <p class="text-sm c-slate" style="line-height:1.7">All 7 core ingredients tienen evidencia Nivel 1–2 (RCTs en humanos). El mapa de sinergia es coherente. No hay interacciones peligrosas dentro del stack. La cafeína es el único riesgo activamente manejado.</p>
+      </div>
+      <div class="card card-p" style="border-top:3px solid #f59e0b">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="rbadge rbadge-yellow" style="font-size:11px;padding:4px 12px">NEEDS COFACTORS</span>
+          <span style="font-weight:800;font-size:14px;color:#0f172a">Formulation Completeness</span>
+        </div>
+        <p class="text-sm c-slate" style="line-height:1.7">El stack funciona tal como está pero añadir <strong>B6 (P-5-P), Phosphatidylserine, Magnesium y AstraGin</strong> alcanza el "elite tier." Sin cofactores: competitivo. Con cofactores: best-in-class.</p>
+      </div>
+      <div class="card card-p" style="border-top:3px solid #f59e0b">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="rbadge rbadge-yellow" style="font-size:11px;padding:4px 12px">MODERATE COMPLEXITY</span>
+          <span style="font-weight:800;font-size:14px;color:#0f172a">Manufacturing Feasibility</span>
+        </div>
+        <p class="text-sm c-slate" style="line-height:1.7">Volumen total de ingredientes fuerza una estrategia de <strong>split-format: polvo + cápsulas</strong>. Ingredientes trademarked (KSM-66, BioPerine) requieren licencias. Runway de lanzamiento realista: <strong>16–24 semanas</strong>.</p>
+      </div>
+      <div class="card card-p" style="border-top:3px solid #2563eb">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="rbadge rbadge-green" style="font-size:11px;padding:4px 12px;background:#dbeafe;color:#1e40af;border-color:#93c5fd">HIGH POTENTIAL</span>
+          <span style="font-weight:800;font-size:14px;color:#0f172a">Commercial Viability</span>
+        </div>
+        <p class="text-sm c-slate" style="line-height:1.7">Mercado biohacker + ejecutivo CAGR ~14% (2024–2030). Precio de venta $60–90/unidad justificado. COGs estimado $18–24/unidad (ingredientes branded). <strong>Gross margin 65–70% alcanzable.</strong></p>
+      </div>
+    </div>
+
+    <!-- ── Final Verdict ── -->
+    <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:20px;padding:28px;color:#fff;margin-bottom:20px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#64748b;margin-bottom:20px">Final Verdict — Dual Panel</div>
+      <div class="grid3" style="margin-bottom:24px">
+        <div style="text-align:center;padding:16px;background:rgba(255,255,255,.05);border-radius:14px;border:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:38px;font-weight:900;color:#60a5fa;line-height:1">9/10</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:6px;font-weight:600">Science Score</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:rgba(255,255,255,.05);border-radius:14px;border:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:38px;font-weight:900;color:#a78bfa;line-height:1">7/10</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:6px;font-weight:600">Mfg. Readiness</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:rgba(255,255,255,.05);border-radius:14px;border:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:38px;font-weight:900;color:#34d399;line-height:1">8/10</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:6px;font-weight:600">Market Timing</div>
+        </div>
+      </div>
+      <div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:14px;padding:18px">
+        <div style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#4ade80;margin-bottom:10px">VERDICT: GO — with formulation optimization first</div>
+        <p style="font-size:13px;color:#cbd5e1;line-height:1.75">El stack base es científicamente sólido, comercialmente diferenciado y legalmente manufacturable hoy bajo DSHEA. Acciones prioritarias: (1) añadir cofactores B6/PS/Mg/AstraGin, (2) decidir formato split (sachet + cápsulas), (3) asegurar licencias KSM-66 y BioPerine, (4) seleccionar CMO GMP-certificado con capacidad NSF. Break-even financiero a ~2,000 unidades/mes a $75 MSRP con 68% gross margin. Viable a escala bootstrapped.</p>
+      </div>
+    </div>
+
+    <!-- ── Priority Action Timeline ── -->
+    <div class="card card-p">
+      <div class="stitle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Priority Action Timeline
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Phase</th><th>Acción</th><th>Timeline</th><th>Est. Cost</th></tr></thead>
+          <tbody>
+            <tr><td><strong style="color:#2563eb">0</strong></td><td>Finalizar fórmula con cofactores + obtener prototipo CoA</td><td class="c-slate">Semanas 1–4</td><td><strong>$2,000–5,000</strong></td></tr>
+            <tr><td><strong style="color:#7c3aed">1</strong></td><td>Selección de CMO + licencias KSM-66 / BioPerine</td><td class="c-slate">Semanas 4–8</td><td><strong>$500 + depósito MOQ</strong></td></tr>
+            <tr><td><strong style="color:#0d9488">2</strong></td><td>Primera producción (5,000 unidades) + testing NSF</td><td class="c-slate">Semanas 8–24</td><td><strong>$35,000–55,000</strong></td></tr>
+            <tr><td><strong style="color:#d97706">3</strong></td><td>Brand launch: DTC + canales ejecutivo/biohacker</td><td class="c-slate">Mes 6+</td><td><strong>$15,000–30,000</strong></td></tr>
+            <tr><td><strong style="color:#dc2626">4</strong></td><td>Reclutamiento SAB + planificación de estudio piloto clínico</td><td class="c-slate">Mes 8+</td><td><strong>$10,000–20,000</strong></td></tr>
+          </tbody>
+          <tfoot>
+            <tr><td colspan="3" style="font-size:13px">Total estimado hasta primera venta</td><td style="font-size:15px;color:#4ade80">$65,000 – $110,000</td></tr>
+          </tfoot>
+        </table>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-top:16px">
+        <p class="text-sm" style="color:#1e40af;line-height:1.7"><strong>Estructura lean posible en el límite inferior</strong> — con pre-orders para validar demanda antes del CMO commitment. Capital mínimo requerido para primera venta real: ~$38,000 (Fases 0–2 optimizadas).</p>
+      </div>
+    </div>
+
+    <div class="hero" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#312e81 100%)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+          Panel Dual — Análisis Completo del FormulationStack
+        </div>
+        <h2>Veredicto Consolidado: GO para Lanzamiento</h2>
+        <p>Dos perspectivas independientes — <strong>Senior Formulation Scientist</strong> y <strong>Biotech Business Strategist</strong> — sobre el mismo stack. Coherencia científica alta, viabilidad comercial confirmada.</p>
+      </div>
+    </div>
+
+    <!-- Score Cards -->
+    <div class="grid2 mb20">
+      <div class="card card-p" style="border-left:4px solid #2563eb">
+        <div class="flex items-center gap12 mb16">
+          <div class="score-ring" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8">9/10</div>
+          <div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2563eb;margin-bottom:4px">🔬 Senior Formulation Scientist</div>
+            <div style="font-weight:900;font-size:15px;color:#0f172a">Fase 1 — Ciencia y Longevidad</div>
+            <div class="text-xs c-dim mt8">Stack coherente y bien fundamentado</div>
+          </div>
+        </div>
+        <p class="text-sm c-slate" style="line-height:1.7">No hay antagonismo real entre ingredientes. El único riesgo de sinergia negativa es timing: cafeína ↑ cortisol + Ashwagandha ↓ cortisol producen cancelación parcial — resoluble con dosing matutino cuando el cortisol natural es alto.</p>
+      </div>
+      <div class="card card-p" style="border-left:4px solid #7c3aed">
+        <div class="flex items-center gap12 mb16">
+          <div class="score-ring" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#6d28d9">8/10</div>
+          <div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7c3aed;margin-bottom:4px">📊 Biotech Business Strategist</div>
+            <div style="font-weight:900;font-size:15px;color:#0f172a">Fase 2 — Manufactura y GTM</div>
+            <div class="text-xs c-dim mt8">Viabilidad alta, complejidad moderada</div>
+          </div>
+        </div>
+        <p class="text-sm c-slate" style="line-height:1.7">Mercado biohacker/ejecutivo crece al 14% CAGR (2024–2030). Alpha Brain y Mind Lab Pro apuntan a todos. El moat defensible está en transparencia radical + certificación NSF + protocolo de uso propietario.</p>
+      </div>
+    </div>
+
+    <!-- SECTION: BioAvailability & Synergy -->
+    <div class="card card-p mb20">
+      <div class="stitle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6l2 9-2 9h8l-2-9z"/><path d="M6 2h12"/><path d="M4 20h16"/></svg>
+        BioavailabilityProfile &amp; Synergy — Tres Capas Convergentes
+      </div>
+      <p class="text-sm c-muted mb16" style="line-height:1.65">El stack tiene una lógica mecanicista sólida con tres capas que convergen, no que compiten:</p>
+
+      <div class="synergy-layer" style="background:#eff6ff;border:1px solid #bfdbfe">
+        <div class="flex items-start gap12">
+          <div class="synergy-num" style="background:#2563eb">1</div>
+          <div>
+            <div style="font-weight:800;font-size:14px;color:#1e40af;margin-bottom:6px">Capa Energética Mitocondrial</div>
+            <div class="text-xs c-dim mb8" style="font-weight:600">Cordyceps + Creatina</div>
+            <p class="text-sm c-slate" style="line-height:1.7">Cordyceps activa <strong>AMPK → PGC-1α → biogénesis mitocondrial</strong>. Creatina actúa como buffer PCr para firing neuronal de alta frecuencia. Juntos son <strong>1+1 &gt; 2</strong> en escenarios de alta demanda cognitiva. Sinergia validada, no especulativa.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="synergy-layer" style="background:#faf5ff;border:1px solid #e9d5ff">
+        <div class="flex items-start gap12">
+          <div class="synergy-num" style="background:#7c3aed">2</div>
+          <div>
+            <div style="font-weight:800;font-size:14px;color:#6d28d9;margin-bottom:6px">Capa Catecolaminérgica</div>
+            <div class="text-xs c-dim mb8" style="font-weight:600">Tirosina → DOPA → Dopamina / Norepinefrina (con B6 como cofactor)</div>
+            <p class="text-sm c-slate" style="line-height:1.7">La cafeína bloquea receptores <strong>A1/A2A adenosina</strong> y amplifica el efecto catecolaminérgico. Sin Tirosina, la cafeína bajo estrés prolongado <strong>depleta dopamina</strong> — la Tirosina previene exactamente ese crash post-estimulante. Sin B6-P5P, la conversión rinde al 40-50% de su potencial.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="synergy-layer" style="background:#f0fdfa;border:1px solid #99f6e4" style="margin-bottom:0">
+        <div class="flex items-start gap12">
+          <div class="synergy-num" style="background:#0d9488">3</div>
+          <div>
+            <div style="font-weight:800;font-size:14px;color:#0f766e;margin-bottom:6px">Capa Adaptogénica HPA</div>
+            <div class="text-xs c-dim mb8" style="font-weight:600">Rhodiola (estimulante-adaptogénica) + Ashwagandha (calmante-adaptogénica) + L-Teanina</div>
+            <p class="text-sm c-slate" style="line-height:1.7">Rhodiola actúa sobre el eje <strong>DA/5-HT</strong>. Ashwagandha actúa sobre el eje <strong>GABA-A/HPA</strong>. Se complementan sin solaparse. La L-Teanina cierra el loop generando <strong>ondas alfa</strong> y amortiguando la reactividad amigdalina de la cafeína. No hay redundancia en el stack.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: Longevity + Optimization -->
+    <div class="grid2 mb20">
+      <!-- Longevity -->
+      <div class="card card-p">
+        <div class="stitle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Longevity Impact
+        </div>
+        <div style="margin-bottom:10px">
+          <div class="text-xs bold" style="color:#16a34a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Puntos Fuertes</div>
+          <div class="optim-row" style="padding-top:0">
+            <div class="optim-dot" style="background:#22c55e"></div>
+            <div><div class="text-sm bold">Ashwagandha → protege telómeros</div><div class="text-xs c-dim">Reduce estrés oxidativo sistémico</div></div>
+          </div>
+          <div class="optim-row">
+            <div class="optim-dot" style="background:#22c55e"></div>
+            <div><div class="text-sm bold">Cordyceps → densidad mitocondrial</div><div class="text-xs c-dim">Aumenta biogénesis vía AMPK/PGC-1α</div></div>
+          </div>
+          <div class="optim-row">
+            <div class="optim-dot" style="background:#22c55e"></div>
+            <div><div class="text-sm bold">Rhodiola → activa HIF-1α</div><div class="text-xs c-dim">Adaptación hipóxica y antienvejecimiento celular</div></div>
+          </div>
+        </div>
+        <div class="alert-warn" style="margin-top:12px;padding:12px 14px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <p style="font-size:12px"><strong>Punto débil crítico:</strong> Cafeína continua → downregulation de receptores adenosina → tolerancia. Solución: protocolo <strong>5-on/2-off</strong> o cycling cada 4–6 semanas. Esto se convierte en el <strong>PerformanceCycle™ Protocol</strong>.</p>
+        </div>
+      </div>
+
+      <!-- Formula Optimization -->
+      <div class="card card-p">
+        <div class="stitle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Optimizaciones de Fórmula
+        </div>
+        <div class="optim-row" style="padding-top:0">
+          <div class="optim-dot" style="background:#2563eb;margin-top:4px"></div>
+          <div><div class="text-sm bold">Cafeína → 150 mg fijo</div><div class="text-xs c-dim">200 mg eleva cortisol innecesariamente sin beneficio adicional</div></div>
+        </div>
+        <div class="optim-row">
+          <div class="optim-dot" style="background:#2563eb;margin-top:4px"></div>
+          <div><div class="text-sm bold">L-Teanina → 300 mg (ratio 1:2)</div><div class="text-xs c-dim">Mejor modulación sin pérdida de estado de alerta</div></div>
+        </div>
+        <div class="optim-row">
+          <div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div>
+          <div><div class="text-sm bold">Ashwagandha → 600 mg KSM-66 full-dose</div><div class="text-xs c-dim">300 mg es sub-terapéutico según los RCTs de KSM-66</div></div>
+        </div>
+        <div class="optim-row">
+          <div class="optim-dot" style="background:#f59e0b;margin-top:4px"></div>
+          <div><div class="text-sm bold">Añadir B6 como P-5-P (25 mg)</div><div class="text-xs c-dim">Cofactor rate-limiting para conversión Tirosina→Dopamina. Sin esto la Tirosina rinde al 40-50%</div></div>
+        </div>
+        <div class="optim-row">
+          <div class="optim-dot" style="background:#16a34a;margin-top:4px"></div>
+          <div><div class="text-sm bold">BioPerine® 5 mg</div><div class="text-xs c-dim">+20-30% absorción en Ashwagandha y Rhodiola. Impacto alto, costo mínimo</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: SupplyChain Risks -->
+    <div class="card card-p mb20">
+      <div class="stitle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        SupplyChain &amp; Sourcing — Riesgos Principales por Ingrediente
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Ingrediente</th><th>Riesgo</th><th>Nivel</th><th>Solución Recomendada</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>KSM-66 Ashwagandha</strong></td>
+              <td class="text-sm c-slate">Fuente única (Ixoreal, India)</td>
+              <td><span class="rbadge rbadge-yellow">Medio</span></td>
+              <td class="text-sm c-slate">Licencia directa con Ixoreal · $120–180/kg</td>
+            </tr>
+            <tr>
+              <td><strong>Cordyceps Militaris</strong></td>
+              <td class="text-sm c-slate">~40% del mercado adulterado</td>
+              <td><span class="rbadge rbadge-red">Alto</span></td>
+              <td class="text-sm c-slate">Exigir DNA barcoding + CoA β-glucan &gt;25% por batch</td>
+            </tr>
+            <tr>
+              <td><strong>Rhodiola Rosea</strong></td>
+              <td class="text-sm c-slate">Alta tasa de adulteración en fuentes económicas</td>
+              <td><span class="rbadge rbadge-red">Alto</span></td>
+              <td class="text-sm c-slate">HPLC-verified 3% rosavins / 1% salidroside por batch</td>
+            </tr>
+            <tr>
+              <td><strong>BioPerine® / AstraGin®</strong></td>
+              <td class="text-sm c-slate">Ingredientes con trademark registrado</td>
+              <td><span class="rbadge rbadge-green">Bajo</span></td>
+              <td class="text-sm c-slate">Licencia de uso directa · Costo: $2–4 / unidad producida</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt16 text-sm c-slate" style="background:#fef9c3;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;line-height:1.7">
+        <strong style="color:#92400e">Riesgo subestimado — Formato de dosificación:</strong> El volumen total del stack (~10–11g por serving) hace <strong>imposible el formato cápsula en una sola toma</strong> (requeriría ~10 cápsulas). Recomendación: polvo en sachet para Creatina + cápsulas para el resto del stack.
+      </div>
+    </div>
+
+    <!-- SECTION: Regulatory + MarketEdge -->
+    <div class="grid2 mb20">
+      <!-- Regulatory -->
+      <div class="card card-p">
+        <div class="stitle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Regulatory Compliance
+        </div>
+        <div class="reg-row" style="padding-top:0">
+          <div class="reg-flag">🇺🇸</div>
+          <div>
+            <div class="text-sm bold">DSHEA (US Market)</div>
+            <div class="text-xs c-muted" style="line-height:1.6;margin-top:4px">Sin aprobación pre-mercado. Manufactura GMP <strong>21 CFR Part 111</strong> obligatoria. Todos los ingredientes tienen historial de mercado previo — sin Novel Ingredient notifications requeridas.</div>
+          </div>
+        </div>
+        <div class="reg-row">
+          <div class="reg-flag">✅</div>
+          <div>
+            <div class="text-sm bold">Claims permitidos</div>
+            <div class="text-xs c-muted" style="line-height:1.6;margin-top:4px">"Supports mental performance and stress resilience" ✅ — Claims de estructura/función DSHEA-compliant.</div>
+          </div>
+        </div>
+        <div class="reg-row">
+          <div class="reg-flag">❌</div>
+          <div>
+            <div class="text-sm bold">Claims prohibidos</div>
+            <div class="text-xs c-muted" style="line-height:1.6;margin-top:4px">Cualquier referencia a tratar, curar o prevenir enfermedades. "Reduces anxiety disorder" = claim farmacológico ilegal bajo DSHEA.</div>
+          </div>
+        </div>
+        <div class="reg-row">
+          <div class="reg-flag">🇪🇺</div>
+          <div>
+            <div class="text-sm bold">EU — Alerta de Expansión</div>
+            <div class="text-xs c-muted" style="line-height:1.6;margin-top:4px">Cordyceps militaris puede requerir autorización <strong>Novel Food</strong>. Rhodiola tiene vía THMP más estricta. Si hay planes europeos, el legal framework es significativamente más complejo.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Edge -->
+      <div class="card card-p">
+        <div class="stitle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          MarketEdge — El Moat Competitivo
+        </div>
+        <p class="text-xs c-dim mb16" style="line-height:1.6">El mercado está saturado de <em>prop blends</em> que esconden dosis reales. Tres pilares defensibles:</p>
+        <div class="moat-card mb12" style="background:#eff6ff;border-color:#bfdbfe">
+          <div class="moat-num" style="color:#2563eb">01</div>
+          <div class="text-sm bold" style="color:#1e40af;margin-bottom:4px">Transparencia Radical</div>
+          <div class="text-xs c-muted" style="line-height:1.6">Full label disclosure con dosis clínicas publicadas. QR code por batch que linkea al CoA de terceros. Solo esto elimina el 80% de la competencia directa.</div>
+        </div>
+        <div class="moat-card mb12" style="background:#faf5ff;border-color:#ddd6fe">
+          <div class="moat-num" style="color:#7c3aed">02</div>
+          <div class="text-sm bold" style="color:#6d28d9;margin-bottom:4px">NSF Certified for Sport / Informed-Sport</div>
+          <div class="text-xs c-muted" style="line-height:1.6">$8,000–15,000/año. Abre el segmento ejecutivo/atleta de alto rendimiento. Ningún competidor a $75 MSRP tiene este sello actualmente.</div>
+        </div>
+        <div class="moat-card" style="background:#f0fdfa;border-color:#99f6e4">
+          <div class="moat-num" style="color:#0d9488">03</div>
+          <div class="text-sm bold" style="color:#0f766e;margin-bottom:4px">PerformanceCycle™ Protocol</div>
+          <div class="text-xs c-muted" style="line-height:1.6">IP propietario 5-on/2-off. Convierte el riesgo de tolerancia a cafeína en una <strong>feature de marca</strong>, no en un bug. Posicionamiento: longevity &gt; performance para un mercado 14% CAGR.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-dual -->
+
+  <!-- ══ TAB 1: SUPPLY CHAIN ══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-supply">
+
+    <div class="hero" style="background:linear-gradient(135deg,#1e293b,#0f172a)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+          SupplyChainFlow — Cordyceps Militaris
+        </div>
+        <h2>Protocolo de Mitigación de Adulteración</h2>
+        <p>Tasa de adulteración estimada en el mercado: <strong style="color:#fca5a5">40–55%</strong>. Este protocolo de 6 puntos de control es el estándar mínimo para certificabilidad NSF / Informed-Sport.</p>
+      </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="timeline mb20">
+      <div class="tl-line"></div>
+
+      <div class="tl-row">
+        <div class="tl-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <div class="tl-card">
+          <div class="flex items-center gap8"><span class="step-num">Paso 1</span><span class="rbadge rbadge-red">Riesgo Alto</span></div>
+          <div class="step-label">Origen del Substrato</div><div class="step-sub">China / Tibet / EE.UU.</div>
+          <p class="step-detail">Cordyceps militaris cultivado en substrato controlado de arroz o soja. Evitar silvestre (Ophiocordyceps sinensis) por precio prohibitivo ($20,000/kg) y variabilidad extrema.</p>
+          <div class="step-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><polyline points="20 6 9 17 4 12"/></svg><span>Solicitar certificado de origen + lote de cultivo documentado.</span></div>
+        </div>
+      </div>
+
+      <div class="tl-row">
+        <div class="tl-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <div class="tl-card">
+          <div class="flex items-center gap8"><span class="step-num">Paso 2</span><span class="rbadge rbadge-red">Riesgo Crítico</span></div>
+          <div class="step-label">DNA Barcoding</div><div class="step-sub">Autenticación genética ITS sequencing</div>
+          <p class="step-detail">El 40% del mercado está adulterado con Cordyceps sp. no activos o micelio en grano sin extraer. El DNA barcoding (ITS sequencing) identifica la especie exacta al 99.9% de precisión.</p>
+          <div class="step-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><polyline points="20 6 9 17 4 12"/></svg><span>Exigir reporte ITS1/ITS2 de laboratorio acreditado (Alkemist Labs, NSF, Eurofins).</span></div>
+        </div>
+      </div>
+
+      <div class="tl-row">
+        <div class="tl-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6l2 9-2 9h8l-2-9z"/><path d="M6 2h12"/><path d="M4 20h16"/></svg></div>
+        <div class="tl-card">
+          <div class="flex items-center gap8"><span class="step-num">Paso 3</span><span class="rbadge rbadge-yellow">Riesgo Medio</span></div>
+          <div class="step-label">Análisis β-Glucan (HPLC)</div><div class="step-sub">Compuesto activo principal</div>
+          <p class="step-detail">β-glucans (>25%) son los polisacáridos responsables de la activación AMPK y producción de ATP. La mayoría de productos en mercado contienen micelio con &lt;5% β-glucans.</p>
+          <div class="step-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><polyline points="20 6 9 17 4 12"/></svg><span>Especificación mínima: >25% β-glucan por HPLC. Rechazar lotes bajo umbral.</span></div>
+        </div>
+      </div>
+
+      <div class="tl-row">
+        <div class="tl-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+        <div class="tl-card">
+          <div class="flex items-center gap8"><span class="step-num">Paso 4</span><span class="rbadge rbadge-red">Riesgo Alto</span></div>
+          <div class="step-label">Metales Pesados (ICP-MS)</div><div class="step-sub">Pb, Cd, As, Hg</div>
+          <p class="step-detail">Los hongos son bioacumuladores naturales. Cordyceps cultivado en sustratos agrícolas puede acumular metales pesados si el suelo base está contaminado. Test ICP-MS obligatorio por batch.</p>
+          <div class="step-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><polyline points="20 6 9 17 4 12"/></svg><span>Límites USP: Pb &lt;5 ppm, Cd &lt;0.5 ppm, As &lt;1.5 ppm, Hg &lt;1.5 ppm. Rechazar si supera.</span></div>
+        </div>
+      </div>
+
+      <div class="tl-row">
+        <div class="tl-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14M5 3v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></div>
+        <div class="tl-card">
+          <div class="flex items-center gap8"><span class="step-num">Paso 5</span><span class="rbadge rbadge-green">Riesgo Bajo</span></div>
+          <div class="step-label">Extracción Dual (Hot Water + EtOH)</div><div class="step-sub">Maximizar perfil activo</div>
+          <p class="step-detail">Agua caliente libera β-glucans (polisacáridos hidrosolubles). Etanol libera cordycepina y adenosina. Un proveedor serio ofrece extracto de doble extracción concentrado 4:1.</p>
+          <div class="step-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><polyline points="20 6 9 17 4 12"/></svg><span>Especificar: Dual-Extracted 4:1 Concentrated Extract. No aceptar raw powder sin extracción.</span></div>
+        </div>
+      </div>
+
+      <div class="tl-row">
+        <div class="tl-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+        <div class="tl-card">
+          <div class="flex items-center gap8"><span class="step-num">Paso 6</span><span class="rbadge rbadge-green">Riesgo Bajo</span></div>
+          <div class="step-label">CoA Final + Liberación de Lote</div><div class="step-sub">Certificado de Análisis</div>
+          <p class="step-detail">Certifica identidad, potencia, pureza microbiológica (TPC, E. coli, Salmonella) y ausencia de contaminantes. No liberar lote sin CoA del fabricante + verificación por laboratorio tercero.</p>
+          <div class="step-action"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><polyline points="20 6 9 17 4 12"/></svg><span>Laboratorio tercero verificador: Alkemist Labs (CA) o ChromaDex (IL). Turnaround: 10–14 días.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suppliers Table -->
+    <div class="stitle">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Proveedores Verificados — Ranking Panel
+    </div>
+    <div class="tbl-wrap mb20">
+      <table>
+        <thead><tr><th>Proveedor</th><th>Origen</th><th>Certificación</th><th>β-Glucan</th><th>MOQ</th><th>Precio/kg</th><th>Rating</th><th>Nota Técnica</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Nammex Organics</strong></td><td class="c-slate">Canadá / China Org.</td><td class="text-xs c-muted">USDA Organic, NSF GMP</td><td><strong class="c-green">&gt;28%</strong></td><td class="c-slate">25 kg</td><td><strong>$85–120</strong></td><td><span class="stars">★★★★★</span></td><td class="text-xs c-muted">Gold standard. CoAs públicos en su sitio.</td></tr>
+          <tr><td><strong>Real Mushrooms</strong></td><td class="c-slate">China Orgánica</td><td class="text-xs c-muted">Organic Certified, CoA público</td><td><strong class="c-green">&gt;25%</strong></td><td class="c-slate">10 kg</td><td><strong>$95–130</strong></td><td><span class="stars">★★★★★</span></td><td class="text-xs c-muted">Ideal para volumen de inicio. DNA barcoding disponible.</td></tr>
+          <tr><td><strong>Nuherbs Co.</strong></td><td class="c-slate">EE.UU. / China</td><td class="text-xs c-muted">GMP, ISO 9001</td><td><strong style="color:#ca8a04">&gt;22%</strong></td><td class="c-slate">50 kg</td><td><strong>$70–95</strong></td><td><span class="stars">★★★★<span class="star-empty">★</span></span></td><td class="text-xs c-muted">Precio competitivo. Verificar lote por lote.</td></tr>
+          <tr><td><strong>PLT Health Solutions</strong></td><td class="c-slate">EE.UU.</td><td class="text-xs c-muted">NSF GMP, Informed-Sport ready</td><td><strong class="c-green">&gt;25%</strong></td><td class="c-slate">20 kg</td><td><strong>$110–150</strong></td><td><span class="stars">★★★★★</span></td><td class="text-xs c-muted">Soporte técnico y regulatory completo.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Warning -->
+    <div class="alert-warn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div><p><strong>Señal de Alerta Roja en Proveedores:</strong> Si un proveedor no puede entregar DNA barcoding (ITS sequencing), rechaza el lote sin importar el precio. El costo de un recall supera en <strong>50x</strong> el ahorro por precio. La adulteración con <em>Ophiocordyceps sinensis</em> sin certificar puede constituir fraude comercial bajo DSHEA.</p></div>
+    </div>
+
+  </div><!-- /tab-supply -->
+
+  <!-- ══ TAB 2: FINANCIAL ══════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-financial">
+
+    <div class="hero" style="background:linear-gradient(135deg,#312e81,#1e40af)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          FinancialModel — P&amp;L Proyectado 12 Meses
+        </div>
+        <h2>Modelo Financiero Detallado</h2>
+        <p>MSRP $75 · 68% gross margin · CMO run 5,000 uds en M1 y M6 · CAC target $32 · LTV/CAC ratio 3.8x · Break-even mes 8–9</p>
+      </div>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="grid4 mb20">
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#dbeafe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+        <div class="kpi-value">$644K</div><div class="kpi-sub">Año 1</div><div class="kpi-label">Revenue Anual (Proyectado)</div>
+      </div>
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#dcfce7"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="kpi-value" style="color:#16a34a">68.8%</div><div class="kpi-sub">@ $75 MSRP</div><div class="kpi-label">Gross Margin / Unidad</div>
+      </div>
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#ede9fe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="kpi-value" style="color:#7c3aed">$32</div><div class="kpi-sub">costo adquisición cliente</div><div class="kpi-label">CAC Target</div>
+      </div>
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#fef9c3"><svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <div class="kpi-value" style="color:#d97706">$288</div><div class="kpi-sub">$24/mes neto × 12M</div><div class="kpi-label">LTV (12 meses, suscriptor)</div>
+      </div>
+    </div>
+
+    <!-- COGs -->
+    <div class="card card-p mb20">
+      <div class="flex justify-between items-center mb20">
+        <div class="stitle" style="margin-bottom:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          COGs Desglosados — Por Unidad
+        </div>
+        <div style="text-align:right"><div style="font-size:26px;font-weight:900;color:#0f172a">$20.10</div><div class="text-xs c-dim">costo total / unidad</div></div>
+      </div>
+      <div id="cogs-bars"></div>
+      <div class="flex justify-between items-center pt16 border-t mt16">
+        <div><div class="bold">Gross Margin @ $75 MSRP</div><div class="text-xs c-dim">margen bruto por unidad vendida</div></div>
+        <div class="flex items-center gap12">
+          <div class="bar-track" style="width:140px;height:10px"><div class="bar-fill" data-pct="68.8" style="background:#22c55e;height:10px"></div></div>
+          <span style="font-size:22px;font-weight:900;color:#16a34a">68.8%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue Chart -->
+    <div class="card card-p mb20">
+      <div class="stitle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Revenue Mensual Proyectado — 12 Meses
+      </div>
+      <div id="rev-chart" style="display:flex;align-items:flex-end;gap:6px;height:160px"></div>
+      <p class="text-xs c-dim mt8" style="text-align:center">M1–M5: Teaser + Pre-venta &nbsp;·&nbsp; M6: Lanzamiento oficial &nbsp;·&nbsp; Objetivo: +15% MoM</p>
+    </div>
+
+    <!-- P&L Table -->
+    <div class="tbl-wrap mb20">
+      <div style="padding:18px 20px;border-bottom:1px solid #f1f5f9">
+        <div style="font-weight:800;font-size:15px;color:#0f172a">P&amp;L Statement — Proyección Mensual</div>
+        <div class="text-xs c-dim mt8">COGs amortizados en M1 y M6 (batch runs). OpEx fijo + Marketing variable.</div>
+      </div>
+      <table>
+        <thead><tr><th>Mes</th><th>Revenue</th><th>Gross Profit (68%)</th><th>Marketing</th><th>OpEx</th><th>Net</th></tr></thead>
+        <tbody id="pnl-body"></tbody>
+        <tfoot><tr id="pnl-foot"></tr></tfoot>
+      </table>
+    </div>
+
+    <!-- Callouts -->
+    <div class="grid3">
+      <div class="callout"><div class="pulse" style="margin:0 auto 12px"></div><div class="callout-val c-blue">~2,000 uds/mes</div><div class="callout-lbl">Break-even mensual</div><div class="callout-sub">@ $75 MSRP con 68% GM</div></div>
+      <div class="callout"><div class="pulse" style="margin:0 auto 12px;background:#7c3aed"></div><div class="callout-val" style="color:#7c3aed">$65K–110K</div><div class="callout-lbl">Capital total lanzamiento</div><div class="callout-sub">hasta primera venta real</div></div>
+      <div class="callout"><div class="pulse" style="margin:0 auto 12px;background:#0d9488"></div><div class="callout-val" style="color:#0d9488">Mes 8–9</div><div class="callout-lbl">Runway a rentabilidad</div><div class="callout-sub">crecimiento 15% MoM target</div></div>
+    </div>
+
+  </div><!-- /tab-financial -->
+
+  <!-- ══ TAB 3: LAUNCH ═════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-launch">
+
+    <div class="hero" style="background:linear-gradient(135deg,#134e4a,#0f766e)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          LaunchStrategy — Direct-to-Consumer 90 Días
+        </div>
+        <h2>Plan de Acción DTC — 90 Días</h2>
+        <p>Construido sobre <strong>Transparencia Radical</strong> como ventaja competitiva y el <strong>PerformanceCycle™ Protocol</strong> como IP propietario. Objetivo: 300 unidades en los primeros 30 días post-lanzamiento.</p>
+      </div>
+    </div>
+
+    <!-- Pillars -->
+    <div class="grid3 mb28">
+      <div class="card card-p">
+        <div class="pillar-icon" style="background:#eef2ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="pillar-title" style="color:#4f46e5">Transparencia Radical</div>
+        <p class="pillar-desc">CoA público por batch, dosis clínicas exactas sin prop blends, QR code a certificados de terceros en cada unidad.</p>
+      </div>
+      <div class="card card-p">
+        <div class="pillar-icon" style="background:#eff6ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
+        <div class="pillar-title" style="color:#2563eb">PerformanceCycle™ Protocol</div>
+        <p class="pillar-desc">Protocolo 5-on/2-off propio. Convierte el riesgo de tolerancia a cafeína en una feature, no en un bug de la marca.</p>
+      </div>
+      <div class="card card-p">
+        <div class="pillar-icon" style="background:#f0fdfa"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+        <div class="pillar-title" style="color:#0d9488">NSF / Informed-Sport</div>
+        <p class="pillar-desc">Certificación que ningún competidor a $75 MSRP tiene actualmente. Abre el segmento atleta + ejecutivo corporativo.</p>
+      </div>
+    </div>
+
+    <!-- Phase Accordion -->
+    <div class="mb28">
+      <div class="phase-card" id="ph0" style="border-color:#c7d2fe">
+        <button class="phase-hdr" onclick="togglePhase(0)">
+          <div class="ph-icon" style="background:#4f46e5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <div class="ph-meta min-w-0">
+            <div><span class="ph-badge" style="background:#eef2ff;color:#4f46e5">Fase 1</span><span class="text-xs c-dim" style="margin-left:8px">Días 1–30</span></div>
+            <div class="ph-title">Teaser &amp; Community</div>
+            <div class="ph-goal">Construir audiencia antes de tener producto. 0 ventas, máximo ruido educativo.</div>
+          </div>
+          <div class="ph-kpi hide-sm" style="background:#eef2ff;color:#4f46e5">KPI: 500+ emails, 3–5 influencers</div>
+          <svg class="ph-chevron" id="chev0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="phase-body open" id="pb0" style="background:#eef2ff;border-color:#c7d2fe">
+          <div class="grid2">
+            <div class="tactic" style="border-color:#c7d2fe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#4f46e5"><span>1</span></div><h4>Contenido de Transparencia Radical</h4></div><p>Serie de 8 posts: "¿Por qué el 80% de suplementos mienten en su etiqueta?" — Cada post educa sobre un ingrediente adulterado del mercado (Cordyceps, prop blends ocultos).</p></div>
+            <div class="tactic" style="border-color:#c7d2fe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#4f46e5"><span>2</span></div><h4>Waitlist con Lead Magnet Científico</h4></div><p>Landing page + descarga gratuita del PDF científico del stack. Objetivo: 500–1,000 emails en 30 días. Plataforma recomendada: Beehiiv o ConvertKit.</p></div>
+            <div class="tactic" style="border-color:#c7d2fe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#4f46e5"><span>3</span></div><h4>Micro-Influencer Seeding</h4></div><p>10–15 creadores en longevidad, HRV tracking y ejecutivos de alto rendimiento. Enviar muestra + CoA real como diferenciador. No pagar — el CoA público es el gancho.</p></div>
+            <div class="tactic" style="border-color:#c7d2fe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#4f46e5"><span>4</span></div><h4>PerformanceCycle™ Protocol — Reveal</h4></div><p>Publicar el protocolo 5-on/2-off como contenido gratuito. "Lo que las marcas no te dicen porque les conviene tu dependencia."</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-card" id="ph1">
+        <button class="phase-hdr" onclick="togglePhase(1)">
+          <div class="ph-icon" style="background:#2563eb"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div class="ph-meta min-w-0">
+            <div><span class="ph-badge" style="background:#eff6ff;color:#2563eb">Fase 2</span><span class="text-xs c-dim" style="margin-left:8px">Días 31–60</span></div>
+            <div class="ph-title">Pre-Venta Fundadores</div>
+            <div class="ph-goal">Validar demanda financiera ANTES del CMO commitment. Pre-orders con entrega en M6.</div>
+          </div>
+          <div class="ph-kpi hide-sm" style="background:#eff6ff;color:#2563eb">KPI: 100–200 pre-orders, $6K–12K</div>
+          <svg class="ph-chevron" id="chev1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="phase-body" id="pb1" style="background:#eff6ff;border-color:#bfdbfe">
+          <div class="grid2">
+            <div class="tactic" style="border-color:#bfdbfe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#2563eb"><span>1</span></div><h4>Founder's Club — 20% Descuento</h4></div><p>MSRP $75 → Fundadores $59. Límite: 200 unidades. Urgencia real. Shopify con pagos diferidos o depósito del 50%.</p></div>
+            <div class="tactic" style="border-color:#bfdbfe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#2563eb"><span>2</span></div><h4>CoA en Tiempo Real</h4></div><p>Publicar CoA de Nammex (Cordyceps) y KSM-66 DURANTE la preventa, no después. Diferenciador #1 vs. toda la competencia.</p></div>
+            <div class="tactic" style="border-color:#bfdbfe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#2563eb"><span>3</span></div><h4>Email Sequence — 7 Emails / 30D</h4></div><p>E1 Bienvenida → E2 El problema → E3 Cómo se formula diferente → E4 PerformanceCycle™ → E5 Testimonios beta → E6 Urgencia → E7 Last call.</p></div>
+            <div class="tactic" style="border-color:#bfdbfe"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#2563eb"><span>4</span></div><h4>Scientific Advisory Board</h4></div><p>1 PhD o MD validado multiplica conversión en segmento ejecutivo por 2.5x (benchmark de mercado). Anunciarlo en esta fase si está confirmado.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-card" id="ph2">
+        <button class="phase-hdr" onclick="togglePhase(2)">
+          <div class="ph-icon" style="background:#0d9488"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg></div>
+          <div class="ph-meta min-w-0">
+            <div><span class="ph-badge" style="background:#f0fdfa;color:#0d9488">Fase 3</span><span class="text-xs c-dim" style="margin-left:8px">Días 61–90</span></div>
+            <div class="ph-title">Lanzamiento Oficial</div>
+            <div class="ph-goal">Primeras ventas a precio completo + flywheel de reviews y suscripción.</div>
+          </div>
+          <div class="ph-kpi hide-sm" style="background:#f0fdfa;color:#0d9488">KPI: 300+ uds, CAC &lt;$35, 20% sub</div>
+          <svg class="ph-chevron" id="chev2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="phase-body" id="pb2" style="background:#f0fdfa;border-color:#99f6e4">
+          <div class="grid2">
+            <div class="tactic" style="border-color:#99f6e4"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#0d9488"><span>1</span></div><h4>Batch #1 Ship + Unboxing UGC</h4></div><p>Enviar a pre-orders + micro-influencers en la misma semana. El CoA en el packaging es el momento WOW: "esto nunca lo vi en un suplemento."</p></div>
+            <div class="tactic" style="border-color:#99f6e4"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#0d9488"><span>2</span></div><h4>Modelo Suscripción — 15% Ahorro</h4></div><p>Precio sub: $64/mes. Reduce CAC a 1.1 órdenes. Plataforma: Recharge + Shopify. Bonus: PerformanceCycle™ Journal digital exclusivo.</p></div>
+            <div class="tactic" style="border-color:#99f6e4"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#0d9488"><span>3</span></div><h4>Paid Media — Micro-Spend Quirúrgico</h4></div><p>Meta Ads lookalike de lista de email. Budget: $2,000/mes. Creativo: CoA como imagen del anuncio "¿tu suplemento muestra esto?" Sin creativos de energía explosiva.</p></div>
+            <div class="tactic" style="border-color:#99f6e4"><div class="flex items-start gap8 mb12"><div class="tactic-num" style="background:#0d9488"><span>4</span></div><h4>Review Engine + Referral Program</h4></div><p>Klaviyo post-compra día 7 solicita review con foto. Referral: $10 crédito por amigo referido. En segmento ejecutivo el P2P es el canal de mayor conversión.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Channel Mix -->
+    <div class="card card-p">
+      <div class="stitle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+        Channel Mix Recomendado — Año 1
+      </div>
+      <div id="channels"></div>
+    </div>
+
+  </div><!-- /tab-launch -->
+
+  <!-- ══ TAB 5: COMPETENCIA ═══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-competencia">
+
+    <div class="hero" style="background:linear-gradient(135deg,#1e1b4b,#312e81,#4c1d95)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Análisis Técnico Expandido — Landscape Competitivo
+        </div>
+        <h2>Mapa de Competencia Directa</h2>
+        <p>El movimiento estratégico no es atacar a Alpha Brain de frente — es posicionarte como <strong>la alternativa para el que ya sabe por qué Alpha Brain no es suficiente</strong>. Ese cliente ya existe, ya está buscando algo mejor, y actualmente no tiene a dónde ir a $75.</p>
+      </div>
+    </div>
+
+    <!-- ── TIER 1 ── -->
+    <div class="stitle mb16">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span style="color:#dc2626">Competencia Directa — Tier 1</span>
+      <span class="text-xs c-dim" style="font-weight:400;margin-left:4px">mismo segmento, precio similar</span>
+    </div>
+
+    <div class="grid3 mb28">
+
+      <!-- Alpha Brain -->
+      <div class="card card-p" style="border-top:3px solid #dc2626;position:relative">
+        <div style="position:absolute;top:16px;right:16px">
+          <span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;border:1px solid #fca5a5">ENEMIGO #1</span>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-weight:900;font-size:17px;color:#0f172a">Alpha Brain</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600">by Onnit &nbsp;·&nbsp; ~$80/mes</div>
+        </div>
+        <div style="background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:6px">DEBILIDAD EXPLOTABLE</div>
+          <p class="text-xs c-slate" style="line-height:1.65">Usa <strong>prop blend</strong> — no divulga dosis exactas por ingrediente. Gran presupuesto de marketing (Joe Rogan como cara), pero el cliente informado ya desconfía de esto.</p>
+        </div>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Sin Cordyceps, sin Creatina integrada</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Sin certificación NSF / Informed-Sport</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#22c55e;margin-top:4px"></div><div class="text-xs c-slate">Ventaja: brand recognition masiva, distribución</div></div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-top:12px">
+          <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:4px">TU ÁNGULO VS. ALPHA BRAIN</div>
+          <p class="text-xs" style="color:#166534;line-height:1.6">"Ellos esconden sus dosis. Nosotros publicamos cada miligramo con CoA de terceros verificado."</p>
+        </div>
+      </div>
+
+      <!-- Mind Lab Pro -->
+      <div class="card card-p" style="border-top:3px solid #2563eb">
+        <div style="margin-bottom:14px">
+          <div style="font-weight:900;font-size:17px;color:#0f172a">Mind Lab Pro</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600">Performance Lab &nbsp;·&nbsp; ~$89/mes</div>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px">POSICIONAMIENTO DISTINTO</div>
+          <p class="text-xs c-slate" style="line-height:1.65">Buena calidad, full disclosure de dosis. Apunta a <strong>"clean cognitive enhancement" sin estimulantes</strong>. Segmento ligeramente distinto — sin cafeína intencional.</p>
+        </div>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Sin cafeína, sin Cordyceps, sin Creatina</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Sin enfoque mitocondrial / deportivo</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#22c55e;margin-top:4px"></div><div class="text-xs c-slate">Ventaja: reputación de transparencia establecida</div></div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-top:12px">
+          <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:4px">TU ÁNGULO VS. MIND LAB PRO</div>
+          <p class="text-xs" style="color:#166534;line-height:1.6">"Ellos son clean. Nosotros somos performance + longevidad + energía real — con la misma transparencia, $14 menos."</p>
+        </div>
+      </div>
+
+      <!-- Qualia Mind -->
+      <div class="card card-p" style="border-top:3px solid #7c3aed">
+        <div style="position:absolute;top:16px;right:16px">
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-weight:900;font-size:17px;color:#0f172a">Qualia Mind</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600">Neurohacker Collective &nbsp;·&nbsp; ~$139/mes</div>
+        </div>
+        <div style="background:#faf5ff;border:1px solid #ddd6fe;border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#6d28d9;margin-bottom:6px">REFERENCIA DE CALIDAD</div>
+          <p class="text-xs c-slate" style="line-height:1.65">El producto más sofisticado del mercado. Full disclosure, <strong>28 ingredientes</strong>, formulado con PhD advisory board. Tu competencia de referencia en calidad — pero a $139 excluye el mercado masivo.</p>
+        </div>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#f59e0b;margin-top:4px"></div><div class="text-xs c-slate">Precio $139/mes crea una barrera natural</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#22c55e;margin-top:4px"></div><div class="text-xs c-slate">Tiene Cordyceps — el único Tier 1 que lo incluye</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Sin NSF Certified for Sport</div></div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-top:12px">
+          <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:4px">TU ÁNGULO VS. QUALIA MIND</div>
+          <p class="text-xs" style="color:#166534;line-height:1.6">"Calidad comparable, $64 menos al mes. Y nosotros tenemos NSF Certified for Sport — ellos no."</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── TIER 2 ── -->
+    <div class="stitle mb16">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span style="color:#d97706">Tier 2 — Adyacentes</span>
+      <span class="text-xs c-dim" style="font-weight:400;margin-left:4px">roban el mismo cliente sin competir directamente</span>
+    </div>
+
+    <div class="grid3 mb28">
+
+      <!-- Thesis -->
+      <div class="card card-p" style="border-top:3px solid #f59e0b">
+        <div style="margin-bottom:14px">
+          <div style="font-weight:900;font-size:17px;color:#0f172a">Thesis</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600">Personalized Nootropics &nbsp;·&nbsp; ~$79/mes</div>
+        </div>
+        <p class="text-xs c-slate mb12" style="line-height:1.65">Nootropics personalizados por suscripción. Su moat es la personalización — el tuyo es la ciencia del stack.</p>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Sin Cordyceps, sin enfoque mitocondrial/longevidad</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Fórmulas cambian por cliente — difícil de certificar NSF</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#22c55e;margin-top:4px"></div><div class="text-xs c-slate">Ventaja: modelo suscripción con quiz de onboarding</div></div>
+      </div>
+
+      <!-- Vyvamind -->
+      <div class="card card-p" style="border-top:3px solid #f59e0b">
+        <div style="margin-bottom:14px">
+          <div style="font-weight:900;font-size:17px;color:#0f172a">Vyvamind</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600">SAP Nutrition &nbsp;·&nbsp; ~$75/mes</div>
+        </div>
+        <p class="text-xs c-slate mb12" style="line-height:1.65">Stack simplificado: cafeína + teanina + tirosina + B6. Precio idéntico al tuyo — la batalla es directa en ese rango de precio.</p>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Sin adaptógenos, sin Cordyceps, sin Creatina</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Fórmula básica — no tiene profundidad científica</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#22c55e;margin-top:4px"></div><div class="text-xs c-slate">Ventaja: simplicidad de mensaje, precio accesible</div></div>
+      </div>
+
+      <!-- Four Sigmatic -->
+      <div class="card card-p" style="border-top:3px solid #f59e0b">
+        <div style="margin-bottom:14px">
+          <div style="font-weight:900;font-size:17px;color:#0f172a">Four Sigmatic Think</div>
+          <div style="font-size:12px;color:#64748b;font-weight:600">Four Sigmatic &nbsp;·&nbsp; ~$55/mes</div>
+        </div>
+        <p class="text-xs c-slate mb12" style="line-height:1.65">Mushroom-focused con Lion's Mane y Chaga — no Cordyceps militaris activo. Apunta al mismo biohacker pero con angle wellness/café.</p>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">No usa Cordyceps militaris con β-glucan verificado</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate">Posicionamiento wellness, no performance/longevidad</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#22c55e;margin-top:4px"></div><div class="text-xs c-slate">Ventaja: precio bajo, fuerte en retail y Amazon</div></div>
+      </div>
+
+    </div>
+
+    <!-- ── COMPARISON TABLE: La Brecha Real ── -->
+    <div class="card card-p mb20">
+      <div class="stitle mb16">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        La Brecha Real — Nadie llena este espacio hoy a $75
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Atributo</th>
+              <th style="text-align:center">Alpha Brain</th>
+              <th style="text-align:center">Mind Lab Pro</th>
+              <th style="text-align:center">Qualia Mind</th>
+              <th style="text-align:center;background:#eff6ff;color:#1e40af">Tu Stack</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">Dosis clínicas publicadas</td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span> <span class="text-xs c-dim">prop blend</span></td>
+              <td style="text-align:center"><span style="color:#16a34a;font-size:16px">✓</span></td>
+              <td style="text-align:center"><span style="color:#16a34a;font-size:16px">✓</span></td>
+              <td style="text-align:center;background:#f0fdf4"><span style="color:#16a34a;font-size:16px">✓</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Cordyceps activo (AMPK/ATP)</td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#16a34a;font-size:16px">✓</span></td>
+              <td style="text-align:center;background:#f0fdf4"><span style="color:#16a34a;font-size:16px">✓</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Creatina integrada</td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center;background:#f0fdf4"><span style="color:#16a34a;font-size:16px">✓</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">NSF Certified for Sport</td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center;background:#fef9c3"><span style="color:#d97706;font-weight:700;font-size:12px">Objetivo</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Protocolo de cycling IP</td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center;background:#f0fdf4"><span style="color:#16a34a;font-size:12px;font-weight:700">✓ PerformanceCycle™</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">CoA público por batch</td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center"><span style="color:#dc2626;font-size:16px">✗</span></td>
+              <td style="text-align:center;background:#f0fdf4"><span style="color:#16a34a;font-size:16px">✓</span></td>
+            </tr>
+            <tr style="background:#f8fafc">
+              <td style="font-weight:800">MSRP / mes</td>
+              <td style="text-align:center;font-weight:700">$80</td>
+              <td style="text-align:center;font-weight:700">$89</td>
+              <td style="text-align:center;font-weight:700">$139</td>
+              <td style="text-align:center;background:#eff6ff;font-weight:900;color:#2563eb;font-size:15px">$75</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Strategic Positioning Callout ── -->
+    <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b);border-radius:20px;padding:28px;color:#fff;margin-bottom:20px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;margin-bottom:16px">Veredicto Estratégico del Panel</div>
+      <div class="grid2" style="gap:20px;margin-bottom:24px">
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#f87171;margin-bottom:10px">El espacio vacío</div>
+          <p style="font-size:13px;color:#cbd5e1;line-height:1.75">Nadie a <strong style="color:#fff">$75 MSRP</strong> tiene NSF + full disclosure + Cordyceps activo + Creatina juntos. Ese es el espacio vacío que el panel identificó. No es un nicho — es el segmento ejecutivo/atleta que actualmente gasta $139 en Qualia porque no hay alternativa más accesible.</p>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4ade80;margin-bottom:10px">El movimiento correcto</div>
+          <p style="font-size:13px;color:#cbd5e1;line-height:1.75">No atacar a Alpha Brain de frente. Posicionarte como <strong style="color:#fff">la alternativa para el que ya sabe por qué Alpha Brain no es suficiente</strong>. Ese cliente ya existe, ya está buscando algo mejor, y actualmente no tiene a dónde ir a $75.</p>
+        </div>
+      </div>
+      <div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:14px;padding:16px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#4ade80;margin-bottom:8px">Mensaje de marca que ningún competidor puede replicar</div>
+        <p style="font-size:14px;color:#f1f5f9;line-height:1.7;font-style:italic">"Alpha Brain esconde sus dosis. Qualia Mind cuesta $139. Nosotros publicamos cada miligramo, tenemos NSF Certified for Sport, y costamos $75. El stack de rendimiento más transparente del mercado."</p>
+      </div>
+    </div>
+
+  </div><!-- /tab-competencia -->
+
+  <!-- ══ TAB 6: PLAN DE MARKETING ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-marketing">
+
+    <div class="hero" style="background:linear-gradient(135deg,#064e3b,#065f46,#0d9488)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Plan de Marketing — Go-to-Market Completo
+        </div>
+        <h2>Estrategia de Crecimiento DTC — Año 1</h2>
+        <p>Canal propio primero, paid media quirúrgico después. El objetivo no es llegar a todos — es llegar primero a los <strong>500 clientes correctos</strong> que se convierten en embajadores del stack. Biohackers, ejecutivos de alto rendimiento, atletas con mentalidad científica.</p>
+      </div>
+    </div>
+
+    <!-- KPI Overview -->
+    <div class="grid4 mb28">
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#d1fae5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="kpi-value" style="color:#059669">500</div>
+        <div class="kpi-sub">primeros 30 días</div>
+        <div class="kpi-label">Leads en lista de email</div>
+      </div>
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#dbeafe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>
+        <div class="kpi-value">$32</div>
+        <div class="kpi-sub">costo adquisición cliente</div>
+        <div class="kpi-label">CAC Target Año 1</div>
+      </div>
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#fef3c7"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <div class="kpi-value" style="color:#d97706">3.8x</div>
+        <div class="kpi-sub">LTV $288 / CAC $32</div>
+        <div class="kpi-label">Ratio LTV:CAC objetivo</div>
+      </div>
+      <div class="card card-p">
+        <div class="kpi-icon" style="background:#fae8ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a21caf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg></div>
+        <div class="kpi-value" style="color:#a21caf">300</div>
+        <div class="kpi-sub">primeras 8 semanas</div>
+        <div class="kpi-label">Unidades vendidas (objetivo)</div>
+      </div>
+    </div>
+
+    <!-- ── REDES SOCIALES ── -->
+    <div class="stitle mb16">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Estrategia por Red Social
+    </div>
+
+    <div class="grid2 mb28">
+
+      <!-- Instagram -->
+      <div class="card card-p" style="border-left:4px solid #e1306c">
+        <div class="flex items-center gap12 mb16">
+          <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="white" stroke="none"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:900;font-size:15px">Instagram</div>
+            <div class="text-xs c-dim">Canal principal — biohacker + ejecutivo visual</div>
+          </div>
+          <span class="rbadge rbadge-red" style="margin-left:auto">PRIORIDAD 1</span>
+        </div>
+        <div class="grid2 mb12" style="gap:10px">
+          <div style="background:#fff5f7;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900;color:#e1306c">5x</div><div class="text-xs c-dim">posts / semana</div></div>
+          <div style="background:#fff5f7;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900;color:#e1306c">3x</div><div class="text-xs c-dim">stories / día</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:8px">Formatos de contenido</div>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#e1306c;margin-top:4px"></div><div class="text-xs c-slate"><strong>Carrusel educativo</strong> — "Por qué el 80% de suplementos mienten en su etiqueta" (alto shares)</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#e1306c;margin-top:4px"></div><div class="text-xs c-slate"><strong>Reels 30–60s</strong> — CoA reveal, lab footage, "¿qué hay realmente en tu pre-workout?"</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#e1306c;margin-top:4px"></div><div class="text-xs c-slate"><strong>Stories interactivas</strong> — polls "¿sabes qué es un prop blend?", quiz de ingredientes</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#e1306c;margin-top:4px"></div><div class="text-xs c-slate"><strong>UGC repost</strong> — unboxing de clientes con CoA en mano (momento WOW)</div></div>
+        <div style="background:#fff5f7;border-radius:10px;padding:10px 12px;margin-top:12px">
+          <div class="text-xs bold" style="color:#e1306c;margin-bottom:4px">KPI — 90 días</div>
+          <div class="text-xs c-slate">5,000 seguidores orgánicos · 4–6% engagement rate · 50 leads/semana hacia email list</div>
+        </div>
+      </div>
+
+      <!-- TikTok -->
+      <div class="card card-p" style="border-left:4px solid #010101">
+        <div class="flex items-center gap12 mb16">
+          <div style="width:42px;height:42px;border-radius:12px;background:#010101;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:900;font-size:15px">TikTok</div>
+            <div class="text-xs c-dim">Crecimiento orgánico masivo — "sciencetok" y "biohackertok"</div>
+          </div>
+          <span class="rbadge rbadge-red" style="margin-left:auto">PRIORIDAD 1</span>
+        </div>
+        <div class="grid2 mb12" style="gap:10px">
+          <div style="background:#f8f8f8;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900">7x</div><div class="text-xs c-dim">videos / semana</div></div>
+          <div style="background:#f8f8f8;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900">15–60s</div><div class="text-xs c-dim">duración óptima</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:8px">Formatos de contenido</div>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#010101;margin-top:4px"></div><div class="text-xs c-slate"><strong>"CoA Test" series</strong> — comprar competidor, mandar a lab, revelar diferencia en video</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#010101;margin-top:4px"></div><div class="text-xs c-slate"><strong>Ciencia rápida</strong> — "¿Qué hace realmente el Cordyceps en tu mitocondria?" en 30s</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#010101;margin-top:4px"></div><div class="text-xs c-slate"><strong>Day-in-the-life</strong> — ejecutivo usando el protocolo 5-on/2-off, HRV tracking</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#010101;margin-top:4px"></div><div class="text-xs c-slate"><strong>"Label exposé"</strong> — prop blend de competidor vs. nuestro label completo</div></div>
+        <div style="background:#f8f8f8;border-radius:10px;padding:10px 12px;margin-top:12px">
+          <div class="text-xs bold" style="margin-bottom:4px">KPI — 90 días</div>
+          <div class="text-xs c-slate">1 video viral (&gt;100K views) · 10,000 seguidores · 1–2% conversión a web</div>
+        </div>
+      </div>
+
+      <!-- LinkedIn -->
+      <div class="card card-p" style="border-left:4px solid #0077b5">
+        <div class="flex items-center gap12 mb16">
+          <div style="width:42px;height:42px;border-radius:12px;background:#0077b5;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:900;font-size:15px">LinkedIn</div>
+            <div class="text-xs c-dim">Canal ejecutivo — CEOs, fundadores, alto rendimiento</div>
+          </div>
+          <span class="rbadge rbadge-yellow" style="margin-left:auto">PRIORIDAD 2</span>
+        </div>
+        <div class="grid2 mb12" style="gap:10px">
+          <div style="background:#e8f4fd;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900;color:#0077b5">3x</div><div class="text-xs c-dim">posts / semana</div></div>
+          <div style="background:#e8f4fd;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900;color:#0077b5">B2B</div><div class="text-xs c-dim">wellness corporativo</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:8px">Ángulos de contenido</div>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#0077b5;margin-top:4px"></div><div class="text-xs c-slate"><strong>Performance ejecutivo</strong> — "Cómo optimizo mi energía cognitiva para Q4 sin crash"</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#0077b5;margin-top:4px"></div><div class="text-xs c-slate"><strong>Longevidad como ventaja competitiva</strong> — HRV, sleep score, output sostenido</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#0077b5;margin-top:4px"></div><div class="text-xs c-slate"><strong>B2B angle</strong> — bienestar ejecutivo como beneficio corporativo para equipos de liderazgo</div></div>
+        <div style="background:#e8f4fd;border-radius:10px;padding:10px 12px;margin-top:12px">
+          <div class="text-xs bold" style="color:#0077b5;margin-bottom:4px">KPI — 90 días</div>
+          <div class="text-xs c-slate">2,000 seguidores · 15–20 DMs cualificados / mes · 1 partnership corporativo explorado</div>
+        </div>
+      </div>
+
+      <!-- X / Twitter -->
+      <div class="card card-p" style="border-left:4px solid #14171a">
+        <div class="flex items-center gap12 mb16">
+          <div style="width:42px;height:42px;border-radius:12px;background:#14171a;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:900;font-size:15px">X / Twitter</div>
+            <div class="text-xs c-dim">Biohacker community — "#longevity #HRV #nootropics"</div>
+          </div>
+          <span class="rbadge rbadge-yellow" style="margin-left:auto">PRIORIDAD 2</span>
+        </div>
+        <div class="grid2 mb12" style="gap:10px">
+          <div style="background:#f7f9f9;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900">2x</div><div class="text-xs c-dim">threads / semana</div></div>
+          <div style="background:#f7f9f9;border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:900">Daily</div><div class="text-xs c-dim">replies en comunidad</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:8px">Ángulos de contenido</div>
+        <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#14171a;margin-top:4px"></div><div class="text-xs c-slate"><strong>Threads científicos</strong> — "Thread: Todo lo que las marcas de suplementos no te dicen (con papers)"</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#14171a;margin-top:4px"></div><div class="text-xs c-slate"><strong>Reply a influencers</strong> — comentar en posts de Bryan Johnson, Peter Attia, Huberman con dato técnico</div></div>
+        <div class="optim-row"><div class="optim-dot" style="background:#14171a;margin-top:4px"></div><div class="text-xs c-slate"><strong>Founder building in public</strong> — proceso de formulación, selección de CMO, CoA results en tiempo real</div></div>
+        <div style="background:#f7f9f9;border-radius:10px;padding:10px 12px;margin-top:12px">
+          <div class="text-xs bold" style="margin-bottom:4px">KPI — 90 días</div>
+          <div class="text-xs c-slate">1 thread viral (+500 RTs) · 3,000 seguidores · presencia en conversaciones longevidad/biohacking</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── PILARES DE CONTENIDO ── -->
+    <div class="card card-p mb20">
+      <div class="stitle mb16">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        Los 5 Pilares de Contenido
+      </div>
+      <div class="grid3" style="gap:14px">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:16px">
+          <div style="font-size:22px;margin-bottom:8px">🔬</div>
+          <div style="font-weight:800;font-size:13px;color:#1e40af;margin-bottom:6px">Ciencia Explicada</div>
+          <p class="text-xs c-slate" style="line-height:1.65">Mecanismos de acción de cada ingrediente. Papers citados. "Por qué funciona" en lenguaje accesible. <strong>35% del contenido.</strong></p>
+        </div>
+        <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:14px;padding:16px">
+          <div style="font-size:22px;margin-bottom:8px">📋</div>
+          <div style="font-weight:800;font-size:13px;color:#0f766e;margin-bottom:6px">Transparencia Radical</div>
+          <p class="text-xs c-slate" style="line-height:1.65">CoA públicos, comparativas de labels, "prop blend expose". Lo que el mercado esconde, nosotros lo mostramos. <strong>25% del contenido.</strong></p>
+        </div>
+        <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:14px;padding:16px">
+          <div style="font-size:22px;margin-bottom:8px">⚡</div>
+          <div style="font-weight:800;font-size:13px;color:#6d28d9;margin-bottom:6px">Performance en Vida Real</div>
+          <p class="text-xs c-slate" style="line-height:1.65">HRV tracking, sleep score, output cognitivo. Clientes reales, datos reales. PerformanceCycle™ en acción. <strong>20% del contenido.</strong></p>
+        </div>
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:16px">
+          <div style="font-size:22px;margin-bottom:8px">🌱</div>
+          <div style="font-weight:800;font-size:13px;color:#c2410c;margin-bottom:6px">Longevidad y Estilo de Vida</div>
+          <p class="text-xs c-slate" style="line-height:1.65">Sueño, estrés, nutrición base. El suplemento es una capa sobre un lifestyle sólido. Posicionamiento aspiracional. <strong>15% del contenido.</strong></p>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:16px">
+          <div style="font-size:22px;margin-bottom:8px">🏆</div>
+          <div style="font-weight:800;font-size:13px;color:#15803d;margin-bottom:6px">Social Proof y Comunidad</div>
+          <p class="text-xs c-slate" style="line-height:1.65">Testimonios verificados, reviews con foto, UGC de clientes. El cliente convencido vende mejor que cualquier anuncio. <strong>5% del contenido.</strong></p>
+        </div>
+        <div style="background:#fdf4ff;border:1px solid #f0abfc;border-radius:14px;padding:16px">
+          <div style="font-size:22px;margin-bottom:8px">🎯</div>
+          <div style="font-weight:800;font-size:13px;color:#a21caf;margin-bottom:6px">Regla de Oro</div>
+          <p class="text-xs c-slate" style="line-height:1.65"><strong>80% contenido educativo / de valor.</strong> 20% contenido de venta directa. Quien solo habla de su producto no construye comunidad — la comunidad es el activo de largo plazo.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INFLUENCER STRATEGY ── -->
+    <div class="card card-p mb20">
+      <div class="stitle mb16">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        Estrategia de Influencers — Tres Niveles
+      </div>
+      <div class="grid3" style="gap:14px;margin-bottom:16px">
+        <div class="card card-p" style="border-top:3px solid #16a34a;padding:18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#16a34a;margin-bottom:8px">Nivel 1 — Micro</div>
+          <div style="font-size:20px;font-weight:900;margin-bottom:2px">1K–50K</div>
+          <div class="text-xs c-dim mb12">seguidores</div>
+          <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#16a34a;margin-top:4px"></div><div class="text-xs c-slate">Engagement rate 5–15% (10x más que macro)</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#16a34a;margin-top:4px"></div><div class="text-xs c-slate">Trato: producto gratis + $100–300 por post</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#16a34a;margin-top:4px"></div><div class="text-xs c-slate">Perfil: biohacker, atleta, ejecutivo, médico</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#16a34a;margin-top:4px"></div><div class="text-xs c-slate"><strong>Meta: 15 activos en M1–M2</strong></div></div>
+        </div>
+        <div class="card card-p" style="border-top:3px solid #2563eb;padding:18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2563eb;margin-bottom:8px">Nivel 2 — Mid-Tier</div>
+          <div style="font-size:20px;font-weight:900;margin-bottom:2px">50K–500K</div>
+          <div class="text-xs c-dim mb12">seguidores</div>
+          <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#2563eb;margin-top:4px"></div><div class="text-xs c-slate">Engagement rate 2–5%, audiencia cualificada</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#2563eb;margin-top:4px"></div><div class="text-xs c-slate">Trato: $500–2,000 + affiliate 15% comisión</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#2563eb;margin-top:4px"></div><div class="text-xs c-slate">Perfil: podcasters longevidad, coaches de HRV</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#2563eb;margin-top:4px"></div><div class="text-xs c-slate"><strong>Meta: 3–5 activos en M3–M4</strong></div></div>
+        </div>
+        <div class="card card-p" style="border-top:3px solid #7c3aed;padding:18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7c3aed;margin-bottom:8px">Nivel 3 — Macro</div>
+          <div style="font-size:20px;font-weight:900;margin-bottom:2px">500K+</div>
+          <div class="text-xs c-dim mb12">seguidores</div>
+          <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate">Solo cuando exista prueba social consolidada</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate">Trato: $5,000–20,000 + equity/partnership</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate">Target: nicho longevidad, no fitness masivo</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate"><strong>Meta: 1 activo en M6+ post-lanzamiento</strong></div></div>
+        </div>
+      </div>
+      <div class="alert-warn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div><p><strong>Regla de oro para influencers:</strong> El CoA público en el packaging es el gancho de seeding más poderoso. No pagar en la fase inicial — enviar el producto + CoA real con la pregunta: "¿Cuándo fue la última vez que una marca te mandó el certificado de análisis junto con el producto?" Eso genera contenido auténtico sin necesidad de guion.</p></div>
+      </div>
+    </div>
+
+    <!-- ── EMAIL MARKETING ── -->
+    <div class="card card-p mb20">
+      <div class="stitle mb16">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Email Marketing — El Canal de Mayor ROI
+      </div>
+      <div class="grid2 mb16" style="gap:12px">
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:26px;font-weight:900;color:#059669">$42</div>
+          <div class="text-xs c-slate mt8">ROI por cada $1 invertido en email (benchmark industria)</div>
+        </div>
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:26px;font-weight:900;color:#059669">35%</div>
+          <div class="text-xs c-slate mt8">del canal mix — mayor rentabilidad a costo marginal casi cero</div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:12px">Secuencia de Bienvenida — 7 emails / 30 días</div>
+      <div style="position:relative">
+        <div style="position:absolute;left:16px;top:0;bottom:0;width:2px;background:#d1fae5"></div>
+        <div id="email-seq"></div>
+      </div>
+
+      <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:14px 16px;margin-top:16px">
+        <div class="text-xs bold" style="color:#059669;margin-bottom:6px">Plataforma recomendada: Klaviyo + Shopify</div>
+        <div class="text-xs c-slate" style="line-height:1.65">Klaviyo permite flows automáticos de post-compra (day 7 review request), win-back campaigns y segmentación por comportamiento de compra. Alternativa lean: Beehiiv para newsletter + ConvertKit para flows.</div>
+      </div>
+    </div>
+
+    <!-- ── PAID MEDIA ── -->
+    <div class="card card-p mb20">
+      <div class="stitle mb16">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Paid Media — Estrategia Quirúrgica
+      </div>
+      <p class="text-sm c-muted mb16" style="line-height:1.65">No invertir en paid hasta tener prueba social orgánica. El paid media amplifica lo que ya funciona orgánicamente — no lo reemplaza.</p>
+      <div class="grid2" style="gap:14px">
+        <div style="border:1px solid #f1f5f9;border-radius:14px;padding:18px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4267B2,#1877F2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:800;font-size:14px">Meta Ads (Facebook + Instagram)</div>
+              <div class="text-xs c-dim">Canal principal de paid · Budget: $2,000/mes en M6</div>
+            </div>
+          </div>
+          <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#1877F2;margin-top:4px"></div><div class="text-xs c-slate"><strong>Lookalike audience</strong> de lista de email como semilla principal</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#1877F2;margin-top:4px"></div><div class="text-xs c-slate"><strong>Retargeting</strong> a visitantes web que no compraron (ventana 7 días)</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#1877F2;margin-top:4px"></div><div class="text-xs c-slate"><strong>Creativo ganador:</strong> CoA como imagen del anuncio — "¿Tu suplemento muestra esto?"</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#1877F2;margin-top:4px"></div><div class="text-xs c-slate">Sin creativos de "energía explosiva" — ángulo científico/transparencia</div></div>
+          <div style="background:#eff6ff;border-radius:10px;padding:10px 12px;margin-top:12px">
+            <div class="text-xs bold c-blue mb4">KPI</div>
+            <div class="text-xs c-slate">CAC &lt;$35 · ROAS &gt;2.5x · CTR &gt;2%</div>
+          </div>
+        </div>
+        <div style="border:1px solid #f1f5f9;border-radius:14px;padding:18px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FF0000,#CC0000);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.54C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#CC0000"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:800;font-size:14px">YouTube Ads (Pre-roll)</div>
+              <div class="text-xs c-dim">Activar en M9+ · Budget: $1,000/mes</div>
+            </div>
+          </div>
+          <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#CC0000;margin-top:4px"></div><div class="text-xs c-slate"><strong>Targeting:</strong> canales de longevidad, biohacking, Peter Attia, Huberman Lab</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#CC0000;margin-top:4px"></div><div class="text-xs c-slate"><strong>Formato:</strong> Video 15–30s con hook científico en primeros 5s</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#CC0000;margin-top:4px"></div><div class="text-xs c-slate">Audiencia ya cualificada — ve contenido de performance/longevidad activamente</div></div>
+          <div class="optim-row"><div class="optim-dot" style="background:#CC0000;margin-top:4px"></div><div class="text-xs c-slate">Reutilizar TikToks orgánicos virales como creativos</div></div>
+          <div style="background:#fff5f5;border-radius:10px;padding:10px 12px;margin-top:12px">
+            <div class="text-xs bold" style="color:#CC0000;margin-bottom:4px">KPI</div>
+            <div class="text-xs c-slate">CPV &lt;$0.05 · View rate &gt;30% · CAC &lt;$45</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CALENDARIO 90 DÍAS ── -->
+    <div class="card card-p">
+      <div class="stitle mb16">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Calendario de Contenido — 90 Días
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Semana</th>
+              <th>Fase</th>
+              <th>Instagram / TikTok</th>
+              <th>LinkedIn / X</th>
+              <th>Email</th>
+              <th>Objetivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>S1–S2</strong></td><td><span class="rbadge" style="background:#ede9fe;color:#6d28d9;border-color:#ddd6fe">Teaser</span></td><td class="text-xs">Anuncio "algo viene" + carrusel prop blend expone</td><td class="text-xs">Thread: "La industria de los suplementos tiene un problema"</td><td class="text-xs">Lanzamiento waitlist + lead magnet PDF científico</td><td class="text-xs bold c-blue">500 emails</td></tr>
+            <tr><td><strong>S3–S4</strong></td><td><span class="rbadge" style="background:#ede9fe;color:#6d28d9;border-color:#ddd6fe">Educación</span></td><td class="text-xs">Serie 8 posts: un ingrediente / post con mecanismo de acción</td><td class="text-xs">Linkedin: "Cómo optimizo mi HRV para Q4"</td><td class="text-xs">E1 Bienvenida → E2 El problema del mercado</td><td class="text-xs bold c-blue">1,000 emails</td></tr>
+            <tr><td><strong>S5–S6</strong></td><td><span class="rbadge" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">Influencers</span></td><td class="text-xs">Seeding a 15 micro-influencers + UGC del CoA reveal</td><td class="text-xs">Thread: "PerformanceCycle™ — por qué hago cycling de cafeína"</td><td class="text-xs">E3 Formulación → E4 PerformanceCycle™ Protocol</td><td class="text-xs bold c-blue">3 influencers activos</td></tr>
+            <tr><td><strong>S7–S8</strong></td><td><span class="rbadge rbadge-yellow">Pre-venta</span></td><td class="text-xs">Founder's Club reveal — 200 unidades a $59 (urgencia real)</td><td class="text-xs">Post: "Abrimos 200 unidades para fundadores — aquí el CoA en tiempo real"</td><td class="text-xs">E5 Testimonios beta → E6 Urgencia Founder's Club</td><td class="text-xs bold" style="color:#d97706">100 pre-orders</td></tr>
+            <tr><td><strong>S9–S10</strong></td><td><span class="rbadge rbadge-yellow">Validación</span></td><td class="text-xs">Unboxing clientes beta + reviews con foto del CoA</td><td class="text-xs">Resultados de beta: HRV +X%, energía sostenida, sin crash</td><td class="text-xs">E7 Last call → Cierre Founder's Club</td><td class="text-xs bold" style="color:#d97706">200 pre-orders</td></tr>
+            <tr><td><strong>S11–S12</strong></td><td><span class="rbadge rbadge-green">Lanzamiento</span></td><td class="text-xs">Ship day contenido + modelo suscripción reveal 15% ahorro</td><td class="text-xs">Post: "Lanzamos hoy. Nuestro CoA está público. ¿El de tu marca?"</td><td class="text-xs">Flow post-compra D7 review + D14 upsell suscripción</td><td class="text-xs bold c-green">300 unidades vendidas</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
+        <div style="background:#eff6ff;border-radius:10px;padding:10px 14px;text-align:center;flex:1;min-width:120px">
+          <div style="font-size:18px;font-weight:900;color:#2563eb">$8,000</div>
+          <div class="text-xs c-dim mt8">Budget total mktg M1–M2 (pre-lanzamiento)</div>
+        </div>
+        <div style="background:#f0fdf4;border-radius:10px;padding:10px 14px;text-align:center;flex:1;min-width:120px">
+          <div style="font-size:18px;font-weight:900;color:#16a34a">$12,000</div>
+          <div class="text-xs c-dim mt8">Budget total mktg M3 (lanzamiento oficial)</div>
+        </div>
+        <div style="background:#faf5ff;border-radius:10px;padding:10px 14px;text-align:center;flex:1;min-width:120px">
+          <div style="font-size:18px;font-weight:900;color:#7c3aed">80/20</div>
+          <div class="text-xs c-dim mt8">Regla: 80% orgánico / 20% paid en Año 1</div>
+        </div>
+        <div style="background:#fff7ed;border-radius:10px;padding:10px 14px;text-align:center;flex:1;min-width:120px">
+          <div style="font-size:18px;font-weight:900;color:#d97706">Mes 6</div>
+          <div class="text-xs c-dim mt8">Primera activación de Meta Ads post prueba social</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-marketing -->
+
+  <!-- ══ TAB 7: PUNTOS CIEGOS ══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-riesgos">
+
+    <div class="hero" style="background:linear-gradient(135deg,#450a0a,#7f1d1d,#991b1b)">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Análisis Sin Complacencias — Del Mundo Digital al Físico
+        </div>
+        <h2>Los 5 Puntos Ciegos del Reporte</h2>
+        <p>Viniendo del mundo del código donde la distribución es instantánea y los errores se arreglan con un commit, saltar a manufactura física tiene puntos ciegos brutales. <strong>El reporte asume un escenario ideal de operaciones.</strong> Aquí está la realidad.</p>
+      </div>
+    </div>
+
+    <!-- Impact summary row -->
+    <div class="grid4 mb28" style="gap:12px">
+      <div style="background:#fff;border:1px solid #fecaca;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:26px;font-weight:900;color:#dc2626">-4.2%</div>
+        <div class="text-xs c-slate mt8">impacto en gross margin por procesador High-Risk</div>
+      </div>
+      <div style="background:#fff;border:1px solid #fecaca;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:26px;font-weight:900;color:#dc2626">-$8</div>
+        <div class="text-xs c-slate mt8">por orden de COGs reales (3PL no incluido en modelo)</div>
+      </div>
+      <div style="background:#fff;border:1px solid #fde68a;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:26px;font-weight:900;color:#d97706">$3K–6K</div>
+        <div class="text-xs c-slate mt8">costo anual de seguro de responsabilidad de producto</div>
+      </div>
+      <div style="background:#fff;border:1px solid #fde68a;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:26px;font-weight:900;color:#d97706">30 días</div>
+        <div class="text-xs c-slate mt8">en que un competidor con $10M puede replicar el stack</div>
+      </div>
+    </div>
+
+    <!-- RIESGO 1: Pagos -->
+    <div class="card card-p mb16" style="border-left:4px solid #dc2626">
+      <div class="flex items-start gap16">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="flex items-center gap8 mb8 flex-wrap">
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#dc2626">Riesgo 1</span>
+            <span class="rbadge rbadge-red">IMPACTO CRÍTICO</span>
+          </div>
+          <div style="font-weight:900;font-size:16px;color:#0f172a;margin-bottom:10px">El Bloqueo del Dinero — High-Risk Merchant Accounts</div>
+          <div class="grid2" style="gap:14px">
+            <div style="background:#fff5f5;border:1px solid #fecaca;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">El riesgo real</div>
+              <p class="text-xs c-slate" style="line-height:1.7">Los suplementos con adaptógenos, nootrópicos o promesas de "alto rendimiento" son catalogados como <strong>industria de Alto Riesgo</strong> por Stripe, PayPal y Shopify Payments. Puedes facturar tus primeros $12,000 y al día siguiente Stripe congelará tus fondos por <strong>180 días</strong> pidiendo licencias médicas. Shopify puede apagar tu tienda sin aviso.</p>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mitigación</div>
+              <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Authorize.net</strong> — procesador especializado en suplementos, comisión 3–4%</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>NMI (Network Merchants)</strong> — High-Risk gateway con integración Shopify</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Durango Merchant Services</strong> — especialista en health products</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#dc2626;margin-top:4px"></div><div class="text-xs c-slate"><strong>Impacto financiero:</strong> comisión 3–5% vs. 2.9% de Stripe → reduce gross margin de 68.8% a ~64.6%</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIESGO 2: 3PL -->
+    <div class="card card-p mb16" style="border-left:4px solid #dc2626">
+      <div class="flex items-start gap16">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="flex items-center gap8 mb8 flex-wrap">
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#dc2626">Riesgo 2</span>
+            <span class="rbadge rbadge-red">IMPACTO DIRECTO EN MARGEN</span>
+          </div>
+          <div style="font-weight:900;font-size:16px;color:#0f172a;margin-bottom:10px">Logística de Última Milla y 3PL — El Costo Invisible</div>
+          <div class="grid2" style="gap:14px">
+            <div style="background:#fff5f5;border:1px solid #fecaca;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Lo que no está en el COGs</div>
+              <p class="text-xs c-slate" style="line-height:1.7">El modelo financiero detalla obsesivamente Cordyceps pero no tiene una línea sobre <strong>Pick, Pack &amp; Ship</strong>. Un 3PL (Third-Party Logistics) sumará entre <strong>$6 y $9 por orden</strong> en envío + caja + inserto + manejo. En software el deploy es gratis. En biotecnología, la logística destruye startups.</p>
+              <div style="background:#fef2f2;border-radius:8px;padding:8px 10px;margin-top:10px">
+                <div class="text-xs bold" style="color:#dc2626;margin-bottom:4px">COGs real por unidad</div>
+                <div style="display:flex;justify-content:space-between;font-size:12px"><span class="c-slate">COGs actual (modelo)</span><span style="font-weight:700">$20.10</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;border-top:1px solid #fecaca;padding-top:4px;margin-top:4px"><span class="c-slate">+ 3PL fulfillment</span><span style="font-weight:700;color:#dc2626">+$7.50</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid #dc2626;padding-top:6px;margin-top:4px"><span style="font-weight:800">COGs real total</span><span style="font-weight:900;color:#dc2626">$27.60</span></div>
+              </div>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mitigación</div>
+              <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>ShipBob</strong> o <strong>ShipMonk</strong> — 3PLs especializados en DTC suplementos, integración nativa Shopify</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate">Negociar <strong>rate preferencial</strong> a partir de 500 órdenes/mes</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate">Packaging diseñado para <strong>caber en USPS Priority Flat Rate</strong> — reduce costo ~40%</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#d97706;margin-top:4px"></div><div class="text-xs c-slate">Ajustar gross margin proyectado de 68.8% → <strong>~59% real</strong> con fulfillment incluido</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate">Devoluciones: reservar <strong>2–3% de revenue</strong> para chargebacks y producto perdido</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIESGO 3: Seguro -->
+    <div class="card card-p mb16" style="border-left:4px solid #f59e0b">
+      <div class="flex items-start gap16">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="flex items-center gap8 mb8 flex-wrap">
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#d97706">Riesgo 3</span>
+            <span class="rbadge rbadge-yellow">OBLIGATORIO ANTES DE PRODUCIR</span>
+          </div>
+          <div style="font-weight:900;font-size:16px;color:#0f172a;margin-bottom:10px">El Escudo Legal — Product Liability Insurance</div>
+          <div class="grid2" style="gap:14px">
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">El riesgo real</div>
+              <p class="text-xs c-slate" style="line-height:1.7">Cumplir la ley <strong>no evita que te demanden</strong>. Estás creando un producto que altera la química cerebral y la frecuencia cardíaca (cafeína, tirosina, adaptógenos). Si un usuario sufre una crisis hipertensiva y culpa a tu producto, un Terms of Service no te va a salvar. Los CMOs <strong>exigirán este seguro</strong> antes de poner tu etiqueta en sus botellas.</p>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mitigación</div>
+              <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Cobertura mínima:</strong> $1M–$2M Product Liability Insurance</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Costo anual:</strong> $3,000–6,000/año (añadir al modelo financiero)</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Proveedores especializados:</strong> NEXT Insurance, CoverWallet, Markel Specialty</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate">Advertencia en label de contraindicaciones: hipertensión, embarazo, menores de 18</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate">LLC o Corp separada del patrimonio personal — escudo corporativo obligatorio</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIESGO 4: Estabilidad -->
+    <div class="card card-p mb16" style="border-left:4px solid #f59e0b">
+      <div class="flex items-start gap16">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6l2 9-2 9h8l-2-9z"/><path d="M6 2h12"/><path d="M4 20h16"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="flex items-center gap8 mb8 flex-wrap">
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#d97706">Riesgo 4</span>
+            <span class="rbadge rbadge-yellow">EL ÁTOMO ≠ EL BIT</span>
+          </div>
+          <div style="font-weight:900;font-size:16px;color:#0f172a;margin-bottom:10px">Química Física — Estabilidad e Higroscopía</div>
+          <div class="grid2" style="gap:14px">
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">El riesgo real</div>
+              <p class="text-xs c-slate" style="line-height:1.7">El polvo es altamente <strong>higroscópico</strong> — absorbe la humedad del aire. Extractos de hongos (Cordyceps) + creatina en formato sachet pueden convertirse en una piedra sólida dentro del empaque en 4–8 semanas en climas húmedos. El cliente que recibe su segundo mes con el polvo apelmazado <strong>cancela la suscripción de $64/mes</strong>. En software un bug se parchea. En física, recuperar reputación de producto cuesta meses.</p>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mitigación</div>
+              <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Shelf-life testing obligatorio</strong> — 3, 6 y 12 meses en cámara de estabilidad (ICH Q1A guidelines)</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Desecante de sílica</strong> en cada sachet — costo +$0.08/unidad, previene 90% del apelmazamiento</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate"><strong>Laminado de barrera alta</strong> (EVOH + aluminio) para el sachet — costo +$0.15/unidad</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#15803d;margin-top:4px"></div><div class="text-xs c-slate">Evaluar <strong>formato cápsulas exclusivo</strong> para eliminar el problema — menos conveniente pero más estable</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#d97706;margin-top:4px"></div><div class="text-xs c-slate">El CMO debe certificar pruebas de estabilidad antes de autorizar producción masiva</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIESGO 5: Moat -->
+    <div class="card card-p mb28" style="border-left:4px solid #7c3aed">
+      <div class="flex items-start gap16">
+        <div style="width:48px;height:48px;border-radius:14px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="flex items-center gap8 mb8 flex-wrap">
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#7c3aed">Riesgo 5</span>
+            <span class="rbadge" style="background:#ede9fe;color:#6d28d9;border-color:#c4b5fd">EL MÁS SUBESTIMADO</span>
+          </div>
+          <div style="font-weight:900;font-size:16px;color:#0f172a;margin-bottom:10px">El Espejismo del Moat Competitivo</div>
+          <div class="grid2" style="gap:14px">
+            <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">El riesgo real</div>
+              <p class="text-xs c-slate" style="line-height:1.7">La <strong>transparencia radical es una estrategia de marketing, no un foso real</strong>. Si validas que el mercado quiere este stack a $75, Onnit puede copiar tu fórmula exacta, publicarla con total transparencia, y usar sus <strong>$10M de presupuesto publicitario</strong> para sacarte del mercado en 30 días. En código, construyes una ventaja técnica difícil de replicar. En fórmulas de suplementos, no existe la propiedad intelectual sobre la combinación de ingredientes genéricos.</p>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Moats Estructurales Reales</div>
+              <div class="optim-row" style="padding-top:0"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate"><strong>Exclusividad de distribución</strong> con proveedor clave — acuerdo de exclusividad regional con Nammex o Real Mushrooms para tu mercado</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate"><strong>Patentar el delivery system</strong> — mecanismo de liberación escalonada, formato sachet propietario, método de encapsulación único</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate"><strong>Motor de datos + app</strong> — usuario ingresa biomarcadores diarios (HRV, sueño, energía) y el algoritmo ajusta el protocolo. Los datos del usuario son el moat que ningún competidor puede replicar</div></div>
+              <div class="optim-row"><div class="optim-dot" style="background:#7c3aed;margin-top:4px"></div><div class="text-xs c-slate"><strong>Scientific Advisory Board (SAB)</strong> con investigadores nombrados en publicaciones — credencial que no se puede comprar rápidamente</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Margen corregido -->
+    <div class="card card-p mb20" style="background:#0f172a;border:none">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;margin-bottom:20px">Modelo Financiero Corregido — Con Riesgos Incluidos</div>
+      <div class="grid4" style="gap:12px;margin-bottom:20px">
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:6px">Gross Margin (modelo)</div>
+          <div style="font-size:22px;font-weight:900;color:#60a5fa">68.8%</div>
+        </div>
+        <div style="background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:11px;color:#fca5a5;margin-bottom:6px">- 3PL Fulfillment</div>
+          <div style="font-size:22px;font-weight:900;color:#f87171">-10%</div>
+        </div>
+        <div style="background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:11px;color:#fca5a5;margin-bottom:6px">- High-Risk Payment</div>
+          <div style="font-size:22px;font-weight:900;color:#f87171">-4.2%</div>
+        </div>
+        <div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:11px;color:#86efac;margin-bottom:6px">Gross Margin Real</div>
+          <div style="font-size:22px;font-weight:900;color:#4ade80">~55%</div>
+        </div>
+      </div>
+      <div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:12px;padding:16px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fbbf24;margin-bottom:8px">Ajuste al modelo — Break-even corregido</div>
+        <p style="font-size:13px;color:#cbd5e1;line-height:1.75">Con un gross margin real de ~55% (vs. 68.8% proyectado), el break-even sube de ~2,000 uds/mes a <strong style="color:#fff">~2,700 uds/mes</strong>. El runway a rentabilidad se extiende de mes 8–9 a <strong style="color:#fff">mes 10–12</strong>. El capital total de lanzamiento sube de $65K–110K a <strong style="color:#fff">$85K–140K</strong>. Sigue siendo viable — pero necesita ser modelado con honestidad antes de comprometer capital.</p>
+      </div>
+    </div>
+
+    <!-- Decisión estratégica -->
+    <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:20px;padding:28px;color:#fff">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#a5b4fc;margin-bottom:16px">Decisión Estratégica — Próximo Paso</div>
+      <p style="font-size:14px;color:#e0e7ff;line-height:1.75;margin-bottom:24px">Para blindar este proyecto antes de comprometer capital, hay dos caminos de profundización prioritarios:</p>
+      <div class="grid2" style="gap:16px">
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:20px;cursor:pointer" onclick="openOptionModal('A')">
+          <div style="font-size:26px;margin-bottom:12px">💳</div>
+          <div style="font-weight:800;font-size:14px;color:#c7d2fe;margin-bottom:8px">Opción A — Arquitectura de Pagos</div>
+          <p style="font-size:12px;color:#a5b4fc;line-height:1.65">Estructurar la integración de procesador High-Risk, estrategia anti-chargeback, impacto en modelo financiero y cómo operar sin que Stripe apague la tienda en el día de lanzamiento.</p>
+          <div style="margin-top:14px;font-size:11px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:1px">→ Click para ver el prompt</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:20px;cursor:pointer" onclick="openOptionModal('B')">
+          <div style="font-size:26px;margin-bottom:12px">📱</div>
+          <div style="font-weight:800;font-size:14px;color:#c7d2fe;margin-bottom:8px">Opción B — App de Biomarcadores</div>
+          <p style="font-size:12px;color:#a5b4fc;line-height:1.65">Diseñar la capa de software que acompaña al PerformanceCycle™ Protocol: captura de HRV, sueño y cognición diaria, algoritmo de ajuste de protocolo, y cómo los datos del usuario crean el moat real que ningún competidor puede comprar.</p>
+          <div style="margin-top:14px;font-size:11px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:1px">→ Click para ver el prompt</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-riesgos -->
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>FormulationStack v1.0 &nbsp;·&nbsp; © 2026 Infiniti Kapital &nbsp;·&nbsp; Panel Dual de Análisis IA</span>
+    <div class="flex gap12 flex-wrap"><span>DSHEA Compliant</span><span>·</span><span>NSF GMP Ready</span><span>·</span><span>US Market</span></div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ── Option Prompt Modal ── -->
+<div id="option-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:1000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeOptionModal()">
+  <div style="background:#1e1b4b;border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:28px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto;color:#fff">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div id="option-modal-title" style="font-weight:900;font-size:16px;color:#c7d2fe"></div>
+      <button onclick="closeOptionModal()" style="background:rgba(255,255,255,.08);border-radius:8px;width:28px;height:28px;color:#fff;font-size:16px;flex-shrink:0">✕</button>
+    </div>
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px">Copia este prompt y pégalo en tu chat con Claude</p>
+    <div id="option-modal-text" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;font-size:13px;line-height:1.7;color:#e0e7ff;margin-bottom:16px"></div>
+    <button id="option-modal-copy" onclick="copyOptionPrompt()" style="background:#4338ca;color:#fff;font-weight:700;font-size:13px;padding:10px 18px;border-radius:10px;width:100%">Copiar prompt</button>
+  </div>
+</div>
+
+<script>
+const OPTION_PROMPTS = {
+  A: 'Analiza en detalle la arquitectura del procesador de pagos de alto riesgo para suplementos: qué pasarela elegir, cómo estructurar la integración con Shopify, cómo manejar chargebacks y cuál es el impacto real en el modelo financiero.',
+  B: 'Diseña la arquitectura de la app de biomarcadores que acompaña al PerformanceCycle Protocol: qué datos captura el usuario (HRV, sueño, energía, cognición), cómo el algoritmo ajusta el protocolo, qué stack técnico usar y cómo los datos del usuario crean un moat competitivo real que ningún competidor puede replicar.'
+};
+const OPTION_TITLES = { A: '💳 Opción A — Arquitectura de Pagos', B: '📱 Opción B — App de Biomarcadores' };
+
+function openOptionModal(key) {
+  document.getElementById('option-modal-title').textContent = OPTION_TITLES[key];
+  document.getElementById('option-modal-text').textContent = OPTION_PROMPTS[key];
+  document.getElementById('option-modal-copy').textContent = 'Copiar prompt';
+  document.getElementById('option-modal-overlay').style.display = 'flex';
+}
+function closeOptionModal() {
+  document.getElementById('option-modal-overlay').style.display = 'none';
+}
+function copyOptionPrompt() {
+  const text = document.getElementById('option-modal-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('option-modal-copy');
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => btn.textContent = 'Copiar prompt', 1500);
+  });
+}
+
+// ── Inner role tabs (Scientist / Strategist) ──────────────────────────────
+function switchInner(role, btn) {
+  document.querySelectorAll('.inner-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.inner-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('inner-' + role).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Sub-tabs within each role panel ───────────────────────────────────────
+function switchSub(role, sub, btn) {
+  const parent = document.getElementById('inner-' + role);
+  parent.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
+  parent.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sub-' + role + '-' + sub).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  initBars();
+}
+
+// ── Phase accordion ────────────────────────────────────────────────────────
+function togglePhase(i) {
+  const body = document.getElementById('pb' + i);
+  const chev = document.getElementById('chev' + i);
+  const card = document.getElementById('ph' + i);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+  card.style.borderColor = !isOpen
+    ? ['#c7d2fe','#bfdbfe','#99f6e4'][i]
+    : '#f1f5f9';
+}
+
+// ── COGs data ──────────────────────────────────────────────────────────────
+const COGS = [
+  {item:'KSM-66 Ashwagandha (600mg)',         cost:2.80, color:'#f97316'},
+  {item:'Cordyceps CS-4 Dual Extract (1.5g)', cost:3.20, color:'#a855f7'},
+  {item:'Creatine Monohydrate (3g)',           cost:0.60, color:'#ef4444'},
+  {item:'Rhodiola Rosea SHR-5 (300mg)',        cost:1.40, color:'#22c55e'},
+  {item:'L-Theanine (300mg)',                  cost:0.90, color:'#3b82f6'},
+  {item:'Caffeine Anhydrous (150mg)',           cost:0.30, color:'#eab308'},
+  {item:'L-Tyrosine (500mg)',                  cost:0.70, color:'#06b6d4'},
+  {item:'Cofactors (B6, PS, Mg, AstraGin)',    cost:2.10, color:'#6366f1'},
+  {item:'BioPerine® + Licencia',               cost:0.80, color:'#ec4899'},
+  {item:'Encapsulado / Sachet + Packaging',    cost:3.80, color:'#64748b'},
+  {item:'CMO Manufacturing Fee',               cost:2.10, color:'#14b8a6'},
+  {item:'Third-Party Testing (Amortizado)',    cost:1.30, color:'#f59e0b'},
+];
+const totalCogs = COGS.reduce((a,b)=>a+b.cost, 0);
+
+// ── Revenue / P&L data ─────────────────────────────────────────────────────
+const PNL = [
+  {m:'M1',  rev:0,       mkt:5000,  opex:8000},
+  {m:'M2',  rev:8750,    mkt:7000,  opex:8000},
+  {m:'M3',  rev:18750,   mkt:9000,  opex:8000},
+  {m:'M4',  rev:28125,   mkt:10000, opex:8500},
+  {m:'M5',  rev:37500,   mkt:10000, opex:8500},
+  {m:'M6',  rev:45000,   mkt:12000, opex:9000},
+  {m:'M7',  rev:56250,   mkt:12000, opex:9000},
+  {m:'M8',  rev:67500,   mkt:13000, opex:9500},
+  {m:'M9',  rev:78750,   mkt:13000, opex:9500},
+  {m:'M10', rev:90000,   mkt:14000, opex:10000},
+  {m:'M11', rev:101250,  mkt:14000, opex:10000},
+  {m:'M12', rev:112500,  mkt:15000, opex:10500},
+];
+const maxRev = Math.max(...PNL.map(m=>m.rev));
+
+// ── Channel Mix data ───────────────────────────────────────────────────────
+const CHANNELS = [
+  {label:'Email Marketing (Lista Propia)',      pct:35, color:'#2563eb', note:'Mayor ROI, costo marginal casi cero'},
+  {label:'Organic Social (Biohacker Content)',  pct:25, color:'#4f46e5', note:'Instagram, Threads, X — contenido científico'},
+  {label:'Micro-Influencer Seeding',            pct:20, color:'#0d9488', note:'10–15 creadores longevidad/ejecutivo'},
+  {label:'Meta Ads (Retargeting)',              pct:12, color:'#7c3aed', note:'Solo audiencias calificadas post-lista'},
+  {label:'Referral / Word of Mouth',            pct:8,  color:'#16a34a', note:'Programa $10 crédito por referido'},
+];
+
+// ── Build COGs bars ────────────────────────────────────────────────────────
+function buildCogs() {
+  const el = document.getElementById('cogs-bars');
+  if (!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  el.innerHTML = COGS.map(c => `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+        <span style="color:#374151;font-weight:500">${c.item}</span>
+        <span style="font-weight:700;color:#0f172a">$${c.cost.toFixed(2)}</span>
+      </div>
+      <div class="bar-track" style="height:6px">
+        <div class="bar-fill" data-pct="${(c.cost/totalCogs*100).toFixed(1)}" style="background:${c.color};height:6px"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Build Revenue Chart ────────────────────────────────────────────────────
+function buildRevChart() {
+  const el = document.getElementById('rev-chart');
+  if (!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  el.innerHTML = PNL.map(m => {
+    const hp = maxRev > 0 ? (m.rev / maxRev * 100) : 0;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+      <span style="font-size:10px;font-weight:600;color:#64748b;min-height:14px">${m.rev > 0 ? '$'+(m.rev/1000).toFixed(0)+'K' : ''}</span>
+      <div style="width:100%;display:flex;align-items:flex-end;height:110px">
+        <div class="bar-fill" data-pct="${Math.max(hp, m.rev>0?5:8)}"
+          style="width:100%;border-radius:6px 6px 0 0;background:${m.rev>0?'linear-gradient(180deg,#60a5fa,#2563eb)':'#e2e8f0'}">
+        </div>
+      </div>
+      <span style="font-size:10px;font-weight:700;color:#94a3b8">${m.m}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Build P&L Table ────────────────────────────────────────────────────────
+function buildPnl() {
+  const body = document.getElementById('pnl-body');
+  const foot = document.getElementById('pnl-foot');
+  if (!body || body.dataset.built) return;
+  body.dataset.built = '1';
+  let totRev=0, totGross=0, totMkt=0, totOpex=0, totNet=0;
+  body.innerHTML = PNL.map((m,i) => {
+    const gross = m.rev * 0.68;
+    const net   = gross - m.opex - m.mkt;
+    totRev+=m.rev; totGross+=gross; totMkt+=m.mkt; totOpex+=m.opex; totNet+=net;
+    return `<tr style="background:${i%2===0?'white':'#fafafa'}">
+      <td style="font-weight:700;color:#374151">${m.m}</td>
+      <td style="font-weight:600;color:#0f172a">${m.rev>0?'$'+m.rev.toLocaleString():'—'}</td>
+      <td style="color:#16a34a;font-weight:600">${m.rev>0?'$'+Math.round(gross).toLocaleString():'—'}</td>
+      <td style="color:#64748b">$${m.mkt.toLocaleString()}</td>
+      <td style="color:#64748b">$${m.opex.toLocaleString()}</td>
+      <td style="font-weight:700;color:${net>=0?'#16a34a':'#dc2626'}">${net>=0?'+':''}$${Math.round(net).toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+  foot.innerHTML = `
+    <td style="font-weight:900">TOTAL AÑO 1</td>
+    <td>$${totRev.toLocaleString()}</td>
+    <td style="color:#86efac">$${Math.round(totGross).toLocaleString()}</td>
+    <td style="color:#94a3b8">$${totMkt.toLocaleString()}</td>
+    <td style="color:#94a3b8">$${totOpex.toLocaleString()}</td>
+    <td style="color:${totNet>=0?'#4ade80':'#f87171'};font-weight:900">${totNet>=0?'+':''}$${Math.round(totNet).toLocaleString()}</td>`;
+}
+
+// ── Build Channels ─────────────────────────────────────────────────────────
+function buildChannels() {
+  const el = document.getElementById('channels');
+  if (!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  el.innerHTML = CHANNELS.map(ch => `
+    <div class="ch-row">
+      <div class="ch-header">
+        <div><span class="ch-label">${ch.label}</span><span class="ch-note">— ${ch.note}</span></div>
+        <span class="ch-pct" style="color:${ch.color}">${ch.pct}%</span>
+      </div>
+      <div class="bar-track" style="height:8px">
+        <div class="bar-fill" data-pct="${ch.pct}" style="background:${ch.color};height:8px"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Animate bars ───────────────────────────────────────────────────────────
+// ── Email sequence ─────────────────────────────────────────────────────────
+const EMAIL_SEQ = [
+  { day:'Día 1',  subject:'Bienvenido — y por qué el 80% de suplementos fallan',     preview:'Lead magnet PDF adjunto + primera dosis de transparencia radical.' },
+  { day:'Día 3',  subject:'El problema que nadie en la industria quiere admitir',      preview:'Prop blends explicados. Por qué las dosis importan más que los ingredientes.' },
+  { day:'Día 7',  subject:'Cómo formulamos diferente (con el CoA adjunto)',            preview:'Primer CoA real de Cordyceps. Comparativa visual con el mercado.' },
+  { day:'Día 12', subject:'PerformanceCycle™ — el protocolo que convierte el riesgo en feature', preview:'5-on/2-off explicado con ciencia. Por qué otras marcas no quieren que lo sepas.' },
+  { day:'Día 18', subject:'Lo que dicen los primeros 20 beta testers (con datos reales)', preview:'HRV tracking, sleep score, output cognitivo. Sin hipérboles — solo datos.' },
+  { day:'Día 24', subject:'⚠️ Founder\'s Club: quedan 48 horas y 23 unidades',         preview:'Urgencia real. Precio $59 vs. $75 MSRP. CoA público por batch garantizado.' },
+  { day:'Día 30', subject:'Última llamada — y lo que viene después del lanzamiento',   preview:'Cierre del Founder\'s Club. Próximos pasos: ship date, tracking, comunidad.' },
+];
+
+function buildEmailSeq() {
+  const el = document.getElementById('email-seq');
+  if (!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  const colors = ['#2563eb','#7c3aed','#0d9488','#d97706','#059669','#dc2626','#0d9488'];
+  el.innerHTML = EMAIL_SEQ.map((e,i) => `
+    <div style="position:relative;padding-left:48px;margin-bottom:16px">
+      <div style="position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;background:${colors[i]};display:flex;align-items:center;justify-content:center;z-index:1;box-shadow:0 0 0 4px #fff">
+        <span style="color:#fff;font-size:11px;font-weight:800">${i+1}</span>
+      </div>
+      <div style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:10px;font-weight:800;color:${colors[i]};text-transform:uppercase;letter-spacing:.5px">${e.day}</span>
+        </div>
+        <div style="font-weight:700;font-size:13px;color:#0f172a;margin-bottom:4px">${e.subject}</div>
+        <div style="font-size:12px;color:#64748b;line-height:1.55">${e.preview}</div>
+      </div>
+    </div>`).join('');
+}
+
+function initBars() {
+  buildCogs(); buildRevChart(); buildPnl(); buildChannels(); buildEmailSeq();
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill[data-pct]').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  }, 100);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+window.addEventListener('load', initBars);
+</script>
+</body>
+</html>
